@@ -1,6 +1,5 @@
 #include <SdFat.h>
 #include "sdcard_manager.h"
-//#include "oled_display.h"
 #include "dht_sensor.h"
 #include "rtc_module.h"
 #include "oled_u8g2.h"
@@ -55,16 +54,21 @@ void showTime() {
 
 }
 
-
-void loop() {
+void dht() {
   temp = getTemperature();
   hum = getHumidity();
   printLineOLED("Temp:", 0, 10, 2);
   printLineOLED(temp, 64, 10, 1);
   printLineOLED("Hum:", 0, 30, 2);
   printLineOLED(hum, 64, 30, 1);
+}
+
+
+void loop() {
+  dht();
   showTime();
   delay(1000);
+  Serial.println("yoo");
 
 
 
