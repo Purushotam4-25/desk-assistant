@@ -101,6 +101,7 @@ void dht() {
 
 
 void loop() {
+  dht();
   showTime();
     encoder.update(); // Handles both encoder and button
     onEncoderChange(); // Check for encoder changes
