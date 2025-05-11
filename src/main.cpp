@@ -11,8 +11,19 @@ String timeNow;
 String temp;
 String hum;
 int tempC;
+RotaryEncoderManager encoder(32, 33, 15);
 
 
+void onButtonClick() {
+    Serial.println("Button clicked!");
+}
+
+void onEncoderChange() {
+    int32_t delta = encoder.getDelta();
+    if(delta != 0) {
+        Serial.printf("Encoder: %d (Δ: %d)\n", encoder.getPosition(), delta);
+    }
+}
 
 
 void setup() {
@@ -24,7 +35,7 @@ void setup() {
   setupRTC();
   setupOLED();
   setupDHT();
-  setupEncoder();
+  encoder.begin();
 
 
   if (!sd.begin(5, SD_SCK_MHZ(4))) {
@@ -41,7 +52,15 @@ void setup() {
   }
   readFile("/test.txt");
 
-
+    // Set button handlers
+    encoder.setClickHandler(onButtonClick);
+    encoder.setDoubleClickHandler([](){
+        Serial.println("Double click detected!");
+    });
+    encoder.setLongPressHandler([](){
+        Serial.println("Long press - resetting encoder");
+        encoder.resetPosition();
+    });
 
 
 
@@ -67,11 +86,12 @@ void dht() {
 
 
 void loop() {
-  dht();
   showTime();
-  delay(1000);
-  updateEncoder();
-
+    encoder.update(); // Handles both encoder and button
+    onEncoderChange(); // Check for encoder changes
+    
+    // Other application code here
+    delay(1); // Prevent watchdog timer issues
 }
 
 
