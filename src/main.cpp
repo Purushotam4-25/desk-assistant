@@ -8,6 +8,7 @@
 #include "dht_sensor.h"
 #include "rtc_module.h"
 #include "oled_u8g2.h"
+#include "rot_encoder.h"
 
 
 
@@ -16,10 +17,22 @@ String timeNow;
 String temp;
 String hum;
 int tempC;
+RotaryEncoderManager encoder(32, 33, 15);
+
 GPIOViewer gpio_viewer;
 
 
 
+void onButtonClick() {
+    Serial.println("Button clicked!");
+}
+
+void onEncoderChange() {
+    int32_t delta = encoder.getDelta();
+    if(delta != 0) {
+        Serial.printf("Encoder: %d (Δ: %d)\n", encoder.getPosition(), delta);
+    }
+}
 
 
 void setup() {
@@ -31,6 +44,7 @@ void setup() {
   setupRTC();
   setupOLED();
   setupDHT();
+  encoder.begin();
 
 
   if (!sd.begin(5, SD_SCK_MHZ(4))) {
@@ -47,7 +61,19 @@ void setup() {
   }
   readFile("/test.txt");
 
+
+    // Set button handlers
+    encoder.setClickHandler(onButtonClick);
+    encoder.setDoubleClickHandler([](){
+        Serial.println("Double click detected!");
+    });
+    encoder.setLongPressHandler([](){
+        Serial.println("Long press - resetting encoder");
+        encoder.resetPosition();
+    });
+
   gpio_viewer.connectToWifi("Aussie Broadband 6525", "xazabaxawe");
+
 
 
 
@@ -75,13 +101,12 @@ void dht() {
 
 
 void loop() {
-  dht();
   showTime();
-  delay(1000);
-
-
-
-
+    encoder.update(); // Handles both encoder and button
+    onEncoderChange(); // Check for encoder changes
+    
+    // Other application code here
+    delay(1); // Prevent watchdog timer issues
 }
 
 
