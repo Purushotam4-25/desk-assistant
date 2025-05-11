@@ -1,8 +1,14 @@
+#undef FILE_READ
+#undef FILE_WRITE
+
 #include <SdFat.h>
+#include <gpio_viewer.h>
+
 #include "sdcard_manager.h"
 #include "dht_sensor.h"
 #include "rtc_module.h"
 #include "oled_u8g2.h"
+
 
 
 SdFat sd;
@@ -10,6 +16,8 @@ String timeNow;
 String temp;
 String hum;
 int tempC;
+GPIOViewer gpio_viewer;
+
 
 
 
@@ -39,10 +47,12 @@ void setup() {
   }
   readFile("/test.txt");
 
+  gpio_viewer.connectToWifi("Iphone", "12345678");
 
 
 
 
+ gpio_viewer.begin();
 }
 
 void showTime() {
