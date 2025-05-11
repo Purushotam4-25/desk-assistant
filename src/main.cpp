@@ -3,6 +3,7 @@
 #include "dht_sensor.h"
 #include "rtc_module.h"
 #include "oled_u8g2.h"
+#include "rot_encoder.h"
 
 
 SdFat sd;
@@ -23,6 +24,7 @@ void setup() {
   setupRTC();
   setupOLED();
   setupDHT();
+  setupEncoder();
 
 
   if (!sd.begin(5, SD_SCK_MHZ(4))) {
@@ -68,9 +70,7 @@ void loop() {
   dht();
   showTime();
   delay(1000);
-
-
-
+  updateEncoder();
 
 }
 
