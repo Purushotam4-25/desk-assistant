@@ -1,9 +1,15 @@
+#undef FILE_READ
+#undef FILE_WRITE
+
 #include <SdFat.h>
+#include <gpio_viewer.h>
+
 #include "sdcard_manager.h"
 #include "dht_sensor.h"
 #include "rtc_module.h"
 #include "oled_u8g2.h"
 #include "rot_encoder.h"
+
 
 
 SdFat sd;
@@ -12,6 +18,9 @@ String temp;
 String hum;
 int tempC;
 RotaryEncoderManager encoder(32, 33, 15);
+
+GPIOViewer gpio_viewer;
+
 
 
 void onButtonClick() {
@@ -52,6 +61,7 @@ void setup() {
   }
   readFile("/test.txt");
 
+
     // Set button handlers
     encoder.setClickHandler(onButtonClick);
     encoder.setDoubleClickHandler([](){
@@ -62,8 +72,13 @@ void setup() {
         encoder.resetPosition();
     });
 
+  gpio_viewer.connectToWifi("Aussie Broadband 6525", "xazabaxawe");
 
 
+
+
+
+ gpio_viewer.begin();
 }
 
 void showTime() {
