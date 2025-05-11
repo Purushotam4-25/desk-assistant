@@ -68,7 +68,6 @@ void loop() {
   dht();
   showTime();
   delay(1000);
-  Serial.println("yoo");
 
 
 
