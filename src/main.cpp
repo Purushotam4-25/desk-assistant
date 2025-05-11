@@ -47,7 +47,7 @@ void setup() {
   }
   readFile("/test.txt");
 
-  gpio_viewer.connectToWifi("Iphone", "12345678");
+  gpio_viewer.connectToWifi("Aussie Broadband 6525", "xazabaxawe");
 
 
 
