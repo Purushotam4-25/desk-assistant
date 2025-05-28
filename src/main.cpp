@@ -9,6 +9,7 @@
 #include "rtc_module.h"
 #include "oled_u8g2.h"
 #include "rot_encoder.h"
+#include <TFT_eSPI.h>
 
 
 
@@ -20,6 +21,7 @@ int tempC;
 RotaryEncoderManager encoder(32, 33, 15);
 
 GPIOViewer gpio_viewer;
+TFT_eSPI tft = TFT_eSPI();
 
 
 
@@ -79,11 +81,30 @@ void setup() {
 
 
  gpio_viewer.begin();
+
+  Serial.begin(115200);
+  tft.init();
+  tft.setRotation(0);
+  
+  tft.fillScreen(TFT_RED);
+  delay(2000);
+  
+  tft.fillScreen(TFT_GREEN);
+  delay(2000);
+  
+  tft.fillScreen(TFT_BLUE);
+  delay(2000);
+  
+  tft.fillScreen(TFT_BLACK);
+  tft.setTextColor(TFT_WHITE);
+  tft.setCursor(10, 10);
+  tft.println("Screen test complete");
 }
 
 void showTime() {
   timeNow = getTime();
   printLineOLED(timeNow, 1, 50, 1);
+  Serial.println(timeNow);
 
 
 
@@ -102,9 +123,13 @@ void dht() {
 
 void loop() {
   dht();
-  showTime();
     encoder.update(); // Handles both encoder and button
     onEncoderChange(); // Check for encoder changes
+
+    tft.fillScreen(TFT_BLACK);
+    delay(1000);
+    tft.drawString("baller", 50, 50, 2);
+
     
     // Other application code here
     delay(1); // Prevent watchdog timer issues

@@ -7,6 +7,7 @@ void setupOLED() {
     oled.clearBuffer();
     oled.setFont(u8g2_font_ncenB08_tr);
     oled.sendBuffer();
+    Serial.println("OLED Setup");
 }
 
 void printLineOLED(const String& text, int x, int y, int size) {

@@ -1,6 +1,5 @@
 #include "sdcard_manager.h"
 
-// Global file object (optional — mostly for reuse in functions)
 File32 file;
 
 bool writeFile(const char* filepath, const char* data) {
@@ -10,7 +9,7 @@ bool writeFile(const char* filepath, const char* data) {
     return false;
   }
 
-  file.print(data);  // You can also use file.write(data, strlen(data));
+  file.print(data);  
   file.close();
   return true;
 }

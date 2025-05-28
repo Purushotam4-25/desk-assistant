@@ -9,7 +9,11 @@ void RotaryEncoderManager::begin() {
       pinMode(_clkPin, INPUT_PULLUP);
       pinMode(_dtPin, INPUT_PULLUP);
 
-    _encoder.attachHalfQuad(_clkPin, _dtPin);
+
+    _encoder.attachSingleEdge(_clkPin, _dtPin);
+
+    
+    _encoder.setFilter(500);
     _encoder.clearCount();
     
     // Initialize button
