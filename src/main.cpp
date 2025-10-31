@@ -24,7 +24,7 @@ GPIOViewer gpio_viewer;
 
 
 void onButtonClick() {
-    Serial.println("Button clicked!");
+    Serial.println("Button clicked");
 }
 
 void onEncoderChange() {
