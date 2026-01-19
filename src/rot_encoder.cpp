@@ -5,7 +5,6 @@ RotaryEncoderManager::RotaryEncoderManager(uint8_t clkPin, uint8_t dtPin, uint8_
     : _clkPin(clkPin), _dtPin(dtPin), _swPin(swPin), _lastPosition(0) {}
 
 void RotaryEncoderManager::begin() {
-    // Initialize encoder with hardware PCNT
       pinMode(_clkPin, INPUT_PULLUP);
       pinMode(_dtPin, INPUT_PULLUP);
 
@@ -15,8 +14,7 @@ void RotaryEncoderManager::begin() {
     
     _encoder.setFilter(500);
     _encoder.clearCount();
-    
-    // Initialize button
+
     _button = OneButton(_swPin, true, true);
     setClickHandler(defaultClick);
     setDoubleClickHandler(defaultDoubleClick);
@@ -24,7 +22,7 @@ void RotaryEncoderManager::begin() {
 }
 
 void RotaryEncoderManager::update() {
-    _button.tick(); // Must be called frequently
+    _button.tick(); 
 }
 
 int32_t RotaryEncoderManager::getPosition() {

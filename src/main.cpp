@@ -10,6 +10,7 @@
 #include "oled_u8g2.h"
 #include "rot_encoder.h"
 #include <TFT_eSPI.h>
+#include <FS.h>
 
 
 
@@ -52,9 +53,11 @@ void setup() {
   if (!sd.begin(5, SD_SCK_MHZ(4))) {
     Serial.println("Local SD init failed");
     return;
+  } else { 
+      Serial.println("SD init success");
   }
 
-  Serial.println("SD init success");
+Serial.println("write test starting");
 
   if (writeFile("/test.txt", "hi")) {
     Serial.println("write success");
@@ -64,7 +67,7 @@ void setup() {
   readFile("/test.txt");
 
 
-    // Set button handlers
+
     encoder.setClickHandler(onButtonClick);
     encoder.setDoubleClickHandler([](){
         Serial.println("Double click detected!");
@@ -74,17 +77,19 @@ void setup() {
         encoder.resetPosition();
     });
 
-  gpio_viewer.connectToWifi("Aussie Broadband 6525", "xazabaxawe");
+  //gpio_viewer.connectToWifi("Aussie Broadband 6525", "xazabaxawe");
 
 
+    
 
 
-
- gpio_viewer.begin();
+ //gpio_viewer.begin();
 
   Serial.begin(115200);
   tft.init();
   tft.setRotation(0);
+
+  tft.loadFont("/fonts/better_vcr.vlw");
   
   tft.fillScreen(TFT_RED);
   delay(2000);
@@ -99,6 +104,8 @@ void setup() {
   tft.setTextColor(TFT_WHITE);
   tft.setCursor(10, 10);
   tft.println("Screen test complete");
+
+  delay(2000);
 }
 
 void showTime() {
@@ -123,16 +130,18 @@ void dht() {
 
 void loop() {
   dht();
-    encoder.update(); // Handles both encoder and button
-    onEncoderChange(); // Check for encoder changes
+    encoder.update();
+    onEncoderChange(); 
 
-    tft.fillScreen(TFT_BLACK);
-    delay(1000);
-    tft.drawString("baller", 50, 50, 2);
 
-    
-    // Other application code here
-    delay(1); // Prevent watchdog timer issues
+
+  
+    delay(1); 
+
+
+    tft.setTextSize(2);
+    tft.drawPixel(1, 1, TFT_BLUE);
+    tft.drawPixel(319, 239, TFT_RED);
 }
 
 
