@@ -1,106 +1,130 @@
-# Desk Assistant
-**Last updated:** 2026-03-27
+# Desk Assistant — Project "Gold Standard"
+**Last Updated:** 2026-03-27
 **Repo:** https://github.com/Purushotam4-25/desk-assistant
-**Notion (ground truth):** https://www.notion.so/1ef7d1d58f65807c8394f8396f04b010
+**Status:** Component Audit Complete -> Starting "Bubblewrap" Overhaul
 
-This file is for AI assistants and developers.
-The authoritative project documentation lives in Notion.
 ---
 
-## What this is
-ESP32-based desk assistant. Modular C++ firmware on PlatformIO/Arduino framework.
-ILI9341 TFT display, rotary encoder UI, SD card for fonts/assets, DS1302 RTC,
-DHT11 sensor, simple audio alerts. Built for learning — understand before implementing.
+## 🎯 One-Line Summary
+A modular ESP32-based desk assistant with an ILI9341 TFT display, rotary-encoder-driven page-based UI, SD card for external fonts/assets, RTC, DHT11 sensor, and simple audio alerts — designed for learning, extensibility, and clarity.
 
-## Architecture keywords
-- `bubblewrap` — overall modular architecture (ScreenManager, BasePage, pages/)
-- `emptyroll` — page navigation / scroll-to-switch behaviour
+---
 
-## Hard rules
-- Never use delay() — entire codebase is non-blocking
-- ILI9341 only — not ST7735 or any other display
-- Always verify pin assignments against the table below before writing config code
-- Explain before implementing — don't dump code without reasoning
+## 🛠 Hardware Specification
+### Power Philosophy
+- **ESP32 Logic:** 3.3V ONLY (not 5V tolerant).
+- **Ground:** All grounds shared.
 
-## Pin Configuration (confirmed 2026-03-17)
-| Component       | Signal | GPIO |
-|----------------|--------|------|
-| SD Card (HW-203)| CS    | 5    |
-|                 | MOSI  | 23   | (shared with TFT)
-|                 | SCK   | 18   | (shared with TFT)
-|                 | MISO  | 19   |
-| DHT11           | DAT   | 4    |
-| DS1302 RTC      | CLK   | 27   |
-|                 | DAT   | 26   |
-|                 | RST   | 25   |
-| Rotary Encoder  | CLK   | 32   |
-|                 | DT    | 33   |
-|                 | SW    | 15   |
-| ILI9341 Display | CS    | 13   |
-|                 | RESET | 16   |
-|                 | DC    | 17   |
-|                 | MOSI  | 23   | (shared with SD)
-|                 | SCK   | 18   | (shared with SD)
-|                 | MISO  | NC   | (write-only, not connected)
+### Pin Configuration (Verified 2026-03-17)
+| Component       | Signal      | GPIO | Remarks                        |
+|----------------|-------------|------|--------------------------------|
+| HW-203 SD Card | CS          | 5    |                                |
+|                | MOSI        | 23   | Shared with TFT                |
+|                | SCK         | 18   | Shared with TFT                |
+|                | MISO        | 19   |                                |
+| DHT11          | DAT         | 4    |                                |
+| DS1302 RTC     | CLK         | 27   |                                |
+|                | DAT         | 26   |                                |
+|                | RST         | 25   |                                |
+| Rotary Encoder | CLK         | 32   |                                |
+|                | DT          | 33   |                                |
+|                | SW (button) | 15   |                                |
+| ILI9341 Display| CS          | 13   |                                |
+|                | RESET       | 16   |                                |
+|                | DC          | 17   |                                |
+|                | SDI (MOSI)  | 23   | Shared with SD                 |
+|                | SCK         | 18   | Shared with SD                 |
+|                | MISO/SDO    | NC   | Write-only                     |
 
-## Libraries
-| Purpose    | Library                    |
-|------------|----------------------------|
-| Display    | TFT_eSPI                   |
-| Encoder    | ESP32Encoder               |
-| Button     | OneButton                  |
-| Storage    | SD / SdFat (Adafruit fork) |
-| RTC        | makuna/RTC                 |
-| Sensor     | DHT sensor library         |
+---
 
-## Architecture (bubblewrap)
+## 🧠 Software Architecture (bubblewrap)
+Modular C++ on PlatformIO. **Mandatory Rule:** NO `delay()` allowed.
+
+### Planned File Structure
 ```
-src/
- ├── main.cpp                      → setup(), loop(), state routing
- ├── ScreenManager.cpp / .h        → owns TFT instance + active page
- ├── RotaryEncoderManager.cpp / .h → encoder abstraction
- ├── FontManager.cpp / .h          → SD font loading (planned)
- └── pages/
-      ├── BasePage.cpp / .h        → abstract: onEnter, onExit, update, draw
-      ├── HomePage.cpp / .h
-      ├── SettingsPage.cpp / .h
-      └── (more TBD)
+/src
+  main.cpp                      → Init managers, start loop()
+  /screens
+    ScreenManager.h / .cpp      → Routes input to active page
+    BasePage.h                  → Abstract interface: init, update, draw
+    MainPage.h / .cpp           → Default dashboard
+    SettingsPage.h / .cpp       → Configuration menu
+  /ui
+    FontManager.h / .cpp        → SD font (.vlw) loading
+    AssetManager.h / .cpp       → BMP loading
+  /input
+    RotaryEncoderManager.h/.cpp → Encoder abstraction (clicks, rotation)
+  /sensors
+    DHTManager.h / .cpp         → Non-blocking sensor reads
+    RTCManager.h / .cpp         → Time/Date management
 ```
 
-## UI / Navigation (emptyroll)
-| Action       | Function              |
-|--------------|-----------------------|
-| Rotate       | Scroll / change value |
-| Single click | Select / enter        |
-| Double click | Return to home        |
-| Long press   | Open settings         |
+### Page Interface (BasePage)
+```cpp
+class ScreenPage {
+public:
+    virtual void init() = 0;
+    virtual void update() = 0;
+    virtual void draw() = 0;
+    virtual void handleInput(RotaryInput input) = 0;
+};
+```
 
-Planned pages: HOME · CLOCK · SENSOR · TIMER · IDLE · SETTINGS
+---
 
-## Feature Status
-| Feature           | Status     |
-|-------------------|------------|
-| DHT11 sensor      | ✅ Done    |
-| ILI9341 display   | ✅ Done    |
-| DS1302 RTC        | ✅ Done    |
-| SD Card           | ✅ Done    |
-| Rotary Encoder    | ✅ Done    |
-| WiFi              | ✅ Done    |
-| Better knob UX    | 🔲 TODO   |
-| Battery system    | 🔲 TODO   |
+## 🎛 UI & Navigation (emptyroll)
+- **Paradigm:** Only one page active at a time.
+- **Input:** Rotary encoder only.
 
-## Current focus (2026-03-27)
-Resuming after a pause. Doing component-by-component audit:
-1. Display — ILI9341 bring-up, TFT_eSPI User_Setup.h
-2. Rotary Encoder — input handling, all button events
-3. UI State Machine — ScreenManager + page routing
-4. Sensor pages — DHT11 + DS1302 display
+| Action       | Function                    |
+|--------------|-----------------------------|
+| Rotate       | Scroll / change selection   |
+| Single Click | Select / enter              |
+| Double Click | Return to HOME              |
+| Long Press   | Open SETTINGS / Global Menu |
 
-## SD Card structure
+**Planned Pages:** HOME · CLOCK · SENSOR · TIMER · IDLE · SETTINGS
+
+---
+
+## 📂 Asset & Font System
+- **Fonts:** TTF converted to `.vlw` (TFT_eSPI smooth font format).
+- **Location:** SD card storage.
+```
 /SD
- ├── fonts/   (Inter-Regular-16.vlw, Inter-Bold-24.vlw, Mono-14.vlw — already on card)
- ├── images/  (icon_weather.bmp, icon_battery.bmp)
- └── data/    (future use)
+├── fonts/ (Inter-Regular-16.vlw, Inter-Bold-24.vlw, Mono-14.vlw)
+├── images/ (icon_weather.bmp, icon_battery.bmp)
+└── data/ (config.json)
+```
 
-# Reminder: Did you update the Notion build log?
-# https://www.notion.so/1ef7d1d58f65807c8394f8396f04b010
+---
+
+## 🚦 Feature Status & Focus
+| Feature           | Status |
+|-------------------|--------|
+| DHT11 Sensor      | ✅ Done|
+| ILI9341 Display   | ✅ Done|
+| DS1302 RTC        | ✅ Done|
+| SD Card           | ✅ Done|
+| Rotary Encoder    | ✅ Done|
+| WiFi Connectivity | ✅ Done|
+| Bubblewrap UI     | 🚧 IN PROGRESS |
+
+### Current Focus (2026-03-27)
+1. **ScreenManager System:** Build the core state machine for page routing.
+2. **BasePage Implementation:** Define the interface for all future modules.
+3. **Driver Encapsulation:** Move global RTC/DHT/SD functions into Manager classes.
+
+---
+
+## 📚 Libraries
+- **Display:** `TFT_eSPI` (ILI9341)
+- **Encoder:** `ESP32Encoder` (Hardware-accelerated)
+- **Button:** `OneButton`
+- **Storage:** `SdFat` (Adafruit fork)
+- **RTC:** `makuna/RTC`
+- **Sensor:** `DHT sensor library`
+
+---
+*Generated context for AI. Regenerate after major structural changes.*
