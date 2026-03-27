@@ -105,7 +105,7 @@ Modular C++ project, not a single `.ino` sketch.
 
 *   All components understood and wired previously.
 *   Project paused, user needs to **cleanly resume**.
-*   Rotary encoder code exists and works.
+*   Rotary encoder code exists and works.  
 *   SD card file structure set up; `.vlw` font files generated and uploaded.
 *   **User wants to:**
     *   Restart cleanly.
