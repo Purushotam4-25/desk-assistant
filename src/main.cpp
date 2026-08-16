@@ -1,12 +1,11 @@
 #undef FILE_READ
 #undef FILE_WRITE
 
-#include <SdFat.h>
 #include <gpio_viewer.h>
 
-#include "sdcard_manager.h"
-#include "dht_sensor.h"
-#include "rtc_module.h"
+#include "SDManager.h"
+#include "DHTManager.h"
+#include "RTCManager.h"
 #include "oled_u8g2.h"
 #include "rot_encoder.h"
 #include <TFT_eSPI.h>
@@ -14,12 +13,14 @@
 
 
 
-SdFat sd;
+SDManager sdManager(5);
 String timeNow;
 String temp;
 String hum;
 int tempC;
 RotaryEncoderManager encoder(32, 33, 15);
+RTCManager rtc(27, 26, 25);
+DHTManager dhtSensor(4);
 
 GPIOViewer gpio_viewer;
 TFT_eSPI tft = TFT_eSPI();
@@ -44,27 +45,27 @@ void setup() {
 
   Serial.println("Init-ing SD card");
 
-  setupRTC();
+  rtc.begin();
   setupOLED();
-  setupDHT();
+  dhtSensor.begin();
   encoder.begin();
 
 
-  if (!sd.begin(5, SD_SCK_MHZ(4))) {
+  if (!sdManager.begin()) {
     Serial.println("Local SD init failed");
     return;
-  } else { 
+  } else {
       Serial.println("SD init success");
   }
 
 Serial.println("write test starting");
 
-  if (writeFile("/test.txt", "hi")) {
+  if (sdManager.writeFile("/test.txt", "hi")) {
     Serial.println("write success");
   } else {
     Serial.println("write failed");
   }
-  readFile("/test.txt");
+  sdManager.readFile("/test.txt");
 
 
 
@@ -109,7 +110,7 @@ Serial.println("write test starting");
 }
 
 void showTime() {
-  timeNow = getTime();
+  timeNow = rtc.getTime();
   printLineOLED(timeNow, 1, 50, 1);
   Serial.println(timeNow);
 
@@ -119,8 +120,8 @@ void showTime() {
 }
 
 void dht() {
-  temp = getTemperature();
-  hum = getHumidity();
+  temp = dhtSensor.getTemperature();
+  hum = dhtSensor.getHumidity();
   printLineOLED("Temp:", 0, 10, 2);
   printLineOLED(temp, 64, 10, 1);
   printLineOLED("Hum:", 0, 30, 2);
