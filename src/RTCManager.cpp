@@ -18,6 +18,11 @@ void RTCManager::begin() {
     }
 }
 
+DateTime RTCManager::getDateTime() {
+    RtcDateTime t = _rtc.GetDateTime();
+    return {t.Year(), t.Month(), t.Day(), t.DayOfWeek(), t.Hour(), t.Minute(), t.Second()};
+}
+
 String RTCManager::getTime() {
     RtcDateTime time = _rtc.GetDateTime();
     char buf[9];

@@ -18,7 +18,8 @@ public:
     void setClickHandler(void (*callback)());
     void setDoubleClickHandler(void (*callback)());
     void setLongPressHandler(void (*callback)());
-    
+    void setTiming(unsigned int clickMs, int debounceMs);
+
 private:
     ESP32Encoder _encoder;
     OneButton _button;
