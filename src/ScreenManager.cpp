@@ -1,4 +1,5 @@
 #include "ScreenManager.h"
+#include "ListFocus.h"
 
 ScreenManager::ScreenManager(InputRouter& input, NavState& nav, const Page* pages, uint8_t pageCount, ScreensMenu& menu)
     : _input(input), _nav(nav), _pages(pages), _pageCount(pageCount), _menu(menu) {}
@@ -29,8 +30,9 @@ void ScreenManager::show(uint8_t page, uint8_t subPage) {
 }
 
 void ScreenManager::stepSubPage(int step) {
-    int count = _pages[_page].count;
-    show(_page, (_subPage + step + count) % count);
+    int next = stepIndex(_subPage, step, _pages[_page].count);
+    if (next == _subPage) return;
+    show(_page, next);
 }
 
 void ScreenManager::dispatch(Input input) {

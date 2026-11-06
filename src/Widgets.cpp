@@ -72,16 +72,12 @@ int textWidth(const char* s, const GFXfont* font, uint8_t size) {
 }
 
 Ink ink(const char* s, const GFXfont* font, uint8_t size) {
-    if (!font) {
-        int length = strlen(s);
-        return {0, length ? (6 * length - 1) * size : 0};
-    }
     int pen = 0, left = 0, right = 0;
     bool seen = false;
     for (; *s; s++) {
         unsigned char c = *s;
-        if (c < font->first || c > font->last) continue;
-        Fonts::GlyphRun glyph = Fonts::run(font, c);
+        if (font ? (c < font->first || c > font->last) : (c < 0x20 || c > 0x7E)) continue;
+        Fonts::GlyphRun glyph = font ? Fonts::run(font, c) : Fonts::glcdRun(c);
         if (glyph.width > 0) {
             if (!seen) left = pen + glyph.xOffset;
             seen = true;
@@ -90,6 +86,21 @@ Ink ink(const char* s, const GFXfont* font, uint8_t size) {
         pen += glyph.advance;
     }
     return {left * size, (right - left) * size};
+}
+
+Rows inkRows(const char* s, const GFXfont* font, uint8_t size) {
+    if (!font) return {0, 8 * size};
+    Fonts::GlyphRows cap = Fonts::rows(font, 'H');
+    int top = cap.top, bottom = cap.bottom;
+    for (; *s; s++) {
+        unsigned char c = *s;
+        if (c < font->first || c > font->last) continue;
+        Fonts::GlyphRows glyph = Fonts::rows(font, c);
+        if (glyph.bottom == glyph.top) continue;
+        if (glyph.top < top) top = glyph.top;
+        if (glyph.bottom > bottom) bottom = glyph.bottom;
+    }
+    return {top * size, (bottom - top) * size};
 }
 
 int inkWidth(const char* s, const GFXfont* font, uint8_t size) {
@@ -119,6 +130,19 @@ void fitText(const char* s, int x, int y, int maxWidth, const GFXfont* font, uin
 
 void card(int x, int y, int w, int h) {
     tft.fillRoundRect(x, y, w, h, 6, Theme::surface);
+}
+
+void button(int x, int y, int w, int h, const char* label, bool focused) {
+    tft.fillRect(x, y, w, h, Theme::background);
+    if (focused) {
+        tft.fillRoundRect(x, y, w, h, 8, Theme::accent);
+    } else {
+        tft.drawRoundRect(x, y, w, h, 8, Theme::outline);
+        tft.drawRoundRect(x + 1, y + 1, w - 2, h - 2, 7, Theme::outline);
+    }
+    Rows rows = inkRows(label, Fonts::title, 2);
+    int top = y + (h - rows.height) / 2 - rows.top;
+    inkTextCentered(label, x + w / 2, top, Fonts::title, 2, focused ? Theme::background : Theme::text);
 }
 
 void statusBar(const DeviceStatus& status, int activePage, int pageCount) {

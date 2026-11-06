@@ -4,6 +4,7 @@
 #include "Fonts.h"
 #include "Widgets.h"
 #include "TimeFormat.h"
+#include "ListFocus.h"
 
 extern TFT_eSPI tft;
 
@@ -48,7 +49,9 @@ bool FocusScreen::available(Item item) const {
 void FocusScreen::moveFocus(int step) {
     int index = (int)_focused;
     for (int tries = 0; tries < itemCount; tries++) {
-        index = (index + step + itemCount) % itemCount;
+        int next = stepIndex(index, step, itemCount);
+        if (next == index) return;
+        index = next;
         if (available((Item)index)) {
             _focused = (Item)index;
             return;
@@ -194,16 +197,7 @@ void FocusScreen::drawColons(FocusState state, uint32_t seconds) {
 }
 
 void FocusScreen::drawButton(int x, const char* label, bool focused) {
-    tft.fillRect(x, buttonY, buttonW, buttonH, Theme::background);
-    if (focused) {
-        tft.fillRoundRect(x, buttonY, buttonW, buttonH, 8, Theme::accent);
-    } else {
-        tft.drawRoundRect(x, buttonY, buttonW, buttonH, 8, Theme::outline);
-        tft.drawRoundRect(x + 1, buttonY + 1, buttonW - 2, buttonH - 2, 7, Theme::outline);
-    }
-    int width = Widgets::textWidth(label, Fonts::title, 2);
-    Widgets::text(label, x + (buttonW - width) / 2, buttonY + 4, Fonts::title, 2,
-                  focused ? Theme::background : Theme::text);
+    Widgets::button(x, buttonY, buttonW, buttonH, label, focused);
 }
 
 void FocusScreen::drawButtons() {

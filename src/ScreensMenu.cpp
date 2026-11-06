@@ -76,7 +76,9 @@ void ScreensMenu::drawRow(int slot, int page, bool selected) {
         tft.drawRoundRect(rowX, y, rowW, rowH, 8, Theme::accent);
         tft.drawRoundRect(rowX + 1, y + 1, rowW - 2, rowH - 2, 7, Theme::accent);
         Icons::draw(entry.icon, rowX, y, Theme::accent, Theme::highlight);
-        Widgets::fitText(entry.name, rowX + 64, y + 15, labelMaxWidth, Fonts::body, 2, Theme::text);
+        bool fitsLarge = Widgets::textWidth(entry.name, Fonts::body, 2) <= labelMaxWidth;
+        Widgets::fitText(entry.name, rowX + 64, y + (fitsLarge ? 15 : 23), labelMaxWidth, Fonts::body, fitsLarge ? 2 : 1,
+                         Theme::text);
     } else {
         Icons::draw(entry.icon, rowX, y, Theme::textMuted, Theme::background);
         Widgets::fitText(entry.name, rowX + 64, y + 23, labelMaxWidth, Fonts::body, 1, Theme::textMuted);

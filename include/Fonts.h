@@ -18,8 +18,15 @@ struct GlyphRun {
     uint8_t advance;
 };
 
+struct GlyphRows {
+    int top;
+    int bottom;
+};
+
 int ascent(const GFXfont* font);
 GlyphBox glyph(const GFXfont* font, char c);
 GlyphRun run(const GFXfont* font, char c);
+GlyphRun glcdRun(char c);
+GlyphRows rows(const GFXfont* font, char c);
 int capCentre(const GFXfont* font, uint8_t scale, char c);
 }

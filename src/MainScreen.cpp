@@ -15,6 +15,18 @@ constexpr int clockCenterX = 160, clockY = 34, clockScale = 4, clockHalfGap = 24
 
 constexpr int roomX = 10, roomY = 152, roomW = 104, cardH = 80;
 constexpr int nextX = 120, nextY = 152, nextW = 190;
+constexpr int nextPadLeft = 14, nextPadRight = 10;
+constexpr int nextLabelY = 6, nextTitleCentre = 35, nextWhenCentre = 62;
+constexpr int nextBarTop = 12, nextBarHeight = 56;
+
+int drawYForCentre(const GFXfont* font, uint8_t scale, int centre) {
+    return centre - Fonts::capCentre(font, scale, 'N');
+}
+
+void boldText(const char* s, int x, int y, const GFXfont* font, uint8_t size, uint16_t color) {
+    Widgets::text(s, x, y, font, size, color);
+    Widgets::text(s, x + 1, y, font, size, color);
+}
 }
 
 MainScreen::MainScreen(const DeviceStatus& status, const Agenda& agenda, const NavState& nav)
@@ -154,29 +166,33 @@ void MainScreen::drawNextUpCard() {
     _nextKey = key;
 
     Widgets::card(nextX, nextY, nextW, cardH);
-    int textX = nextX + 14;
-    int textMaxWidth = nextW - 14 - 10;
-    Widgets::text("Next up", textX, nextY + 6, Fonts::title, 1, Theme::textMuted);
+    int textX = nextX + nextPadLeft;
+    int textMaxWidth = nextW - nextPadLeft - nextPadRight;
+    Widgets::text("Next up", textX, nextY + nextLabelY, Fonts::title, 1, Theme::textMuted);
 
     if (next < 0) {
-        tft.fillRect(nextX, nextY + 12, 4, 56, Theme::good);
-        Widgets::text("All clear", textX, nextY + 28, Fonts::title, 2, Theme::good);
-        Widgets::text("Nothing else today", textX, nextY + 54, Fonts::title, 1, Theme::textMuted);
+        tft.fillRect(nextX, nextY + nextBarTop, 4, nextBarHeight, Theme::good);
+        Widgets::text("All clear", textX, nextY + drawYForCentre(Fonts::title, 2, nextTitleCentre), Fonts::title, 2,
+                      Theme::good);
+        Widgets::text("Nothing else today", textX, nextY + drawYForCentre(Fonts::title, 1, nextWhenCentre),
+                      Fonts::title, 1, Theme::textMuted);
         return;
     }
 
     const AgendaEvent& event = _agenda.at(next);
     uint16_t color = soon ? Theme::alert : Theme::accent;
-    tft.fillRect(nextX, nextY + 12, 4, 56, color);
-    Widgets::fitText(event.title, textX, nextY + 23, textMaxWidth, Fonts::title, 2, Theme::text);
+    tft.fillRect(nextX, nextY + nextBarTop, 4, nextBarHeight, color);
+
+    uint8_t titleScale = Widgets::textWidth(event.title, Fonts::title, 2) <= textMaxWidth ? 2 : 1;
+    Widgets::fitText(event.title, textX, nextY + drawYForCentre(Fonts::title, titleScale, nextTitleCentre), textMaxWidth,
+                     Fonts::title, titleScale, Theme::text);
 
     char when[24];
     if (soon) {
         snprintf(when, sizeof(when), "in %d min", until);
-        Widgets::text(when, textX, nextY + 46, Fonts::body, 2, color);
     } else {
         snprintf(when, sizeof(when), "%02u:%02u - %02u:%02u", event.startMinute / 60, event.startMinute % 60,
                  event.endMinute / 60, event.endMinute % 60);
-        Widgets::text(when, textX, nextY + 52, Fonts::body, 1, color);
     }
+    boldText(when, textX, nextY + drawYForCentre(Fonts::body, 1, nextWhenCentre), Fonts::body, 1, color);
 }

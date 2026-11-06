@@ -28,6 +28,10 @@
 #include "WeatherForecastScreen.h"
 #include "WeatherRoomsScreen.h"
 #include "WeatherAirScreen.h"
+#include "TimerService.h"
+#include "TimerScreen.h"
+#include "PomodoroScreen.h"
+#include "WorldClockScreen.h"
 
 const AgendaEvent sampleEvents[] = {
     {8 * 60 + 30, 9 * 60, "Standup"},
@@ -83,11 +87,21 @@ WeatherForecastScreen weatherForecastScreen(weather, statusService.status(), nav
 WeatherRoomsScreen weatherRoomsScreen(weather, statusService.status(), nav);
 WeatherAirScreen weatherAirScreen(weather, nav);
 
+TimerService timerService;
+TimerScreen timerScreen(nav, timerService);
+PomodoroScreen pomodoroScreen(nav, timerService);
+
+WorldClockScreen worldClockScreen(statusService.status());
+
 Screen* const mainSubPages[] = {&mainScreen, &todayScreen, &focusScreen};
 Screen* const weatherSubPages[] = {&weatherNowScreen, &weatherForecastScreen, &weatherRoomsScreen, &weatherAirScreen};
+Screen* const worldSubPages[] = {&worldClockScreen};
+Screen* const timerSubPages[] = {&timerScreen, &pomodoroScreen};
 const Page pages[] = {
     {"Main", Icon::Main, mainSubPages, sizeof(mainSubPages) / sizeof(mainSubPages[0])},
     {"Weather", Icon::Weather, weatherSubPages, sizeof(weatherSubPages) / sizeof(weatherSubPages[0])},
+    {"World", Icon::World, worldSubPages, sizeof(worldSubPages) / sizeof(worldSubPages[0])},
+    {"Timer", Icon::Timer, timerSubPages, sizeof(timerSubPages) / sizeof(timerSubPages[0])},
 };
 constexpr uint8_t pageCount = sizeof(pages) / sizeof(pages[0]);
 
@@ -117,6 +131,7 @@ void loop() {
     console.update();
     statusService.update();
     focusSession.update();
+    timerService.update();
     screens.update();
     screens.draw();
 }
