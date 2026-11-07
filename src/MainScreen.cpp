@@ -11,10 +11,11 @@ namespace {
 constexpr int soonWithinMinutes = 30;
 const char* const weekdayNames[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
 
-constexpr int clockCenterX = 160, clockY = 34, clockScale = 4, clockHalfGap = 24;
+constexpr int clockCenterX = 160, clockY = 31, clockScale = 4, clockHalfGap = 32;
+constexpr int dateY = 105, barY = 133;
 
-constexpr int roomX = 10, roomY = 152, roomW = 104, cardH = 80;
-constexpr int nextX = 120, nextY = 152, nextW = 190;
+constexpr int roomX = 10, roomY = 150, roomW = 104, cardH = 80;
+constexpr int nextX = 120, nextY = 150, nextW = 190;
 constexpr int nextPadLeft = 14, nextPadRight = 10;
 constexpr int nextLabelY = 6, nextTitleCentre = 35, nextWhenCentre = 62;
 constexpr int nextBarTop = 12, nextBarHeight = 56;
@@ -77,10 +78,10 @@ void MainScreen::drawClock() {
     snprintf(hours, sizeof(hours), "%02u", _status.now.hour);
     snprintf(minutes, sizeof(minutes), "%02u", _status.now.minute);
 
-    int hoursWidth = Widgets::textWidth(hours, Fonts::body, clockScale);
+    int hoursInk = Widgets::inkWidth(hours, Fonts::body, clockScale);
     tft.fillRect(0, 28, 320, 72, Theme::background);
-    Widgets::text(hours, clockCenterX - clockHalfGap - hoursWidth, clockY, Fonts::body, clockScale, Theme::text);
-    Widgets::text(minutes, clockCenterX + clockHalfGap, clockY, Fonts::body, clockScale, Theme::text);
+    Widgets::inkText(hours, clockCenterX - clockHalfGap - hoursInk, clockY, Fonts::body, clockScale, Theme::text);
+    Widgets::inkText(minutes, clockCenterX + clockHalfGap, clockY, Fonts::body, clockScale, Theme::text);
     _colonKey = -1;
 }
 
@@ -115,9 +116,9 @@ void MainScreen::drawDate() {
     int dateWidth = Widgets::textWidth(date, Fonts::body, 1);
     int x = 160 - (dayWidth + gap + dateWidth) / 2;
 
-    tft.fillRect(0, 102, 320, 22, Theme::background);
-    Widgets::text(day, x, 104, Fonts::body, 1, Theme::textMuted);
-    Widgets::text(date, x + dayWidth + gap, 104, Fonts::body, 1, Theme::textMuted);
+    tft.fillRect(0, dateY - 3, 320, 22, Theme::background);
+    Widgets::text(day, x, dateY, Fonts::body, 1, Theme::textMuted);
+    Widgets::text(date, x + dayWidth + gap, dateY, Fonts::body, 1, Theme::textMuted);
 }
 
 void MainScreen::drawDayBar() {
@@ -125,8 +126,8 @@ void MainScreen::drawDayBar() {
     if (key == _barKey) return;
     _barKey = key;
 
-    tft.fillRect(20, 128, 280, 4, Theme::outline);
-    tft.fillRect(20, 128, key * 280 / 100, 4, Theme::accent);
+    tft.fillRect(20, barY, 280, 4, Theme::outline);
+    tft.fillRect(20, barY, key * 280 / 100, 4, Theme::accent);
 }
 
 void MainScreen::drawRoomCard() {
