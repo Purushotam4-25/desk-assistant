@@ -8,4 +8,5 @@ struct Page {
     Icon icon;
     Screen* const* subPages;
     uint8_t count;
+    uint8_t (*entrySubPage)();
 };

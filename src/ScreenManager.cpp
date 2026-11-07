@@ -76,7 +76,9 @@ void ScreenManager::dispatch(Input input) {
         case Input::Select:
             if (_menuOpen) {
                 _menuOpen = false;
-                show(_menu.focusedPage(), 0);
+                uint8_t selected = _menu.focusedPage();
+                const Page& selectedPage = _pages[selected];
+                show(selected, selectedPage.entrySubPage ? selectedPage.entrySubPage() : 0);
                 return;
             }
             if (_detail) {

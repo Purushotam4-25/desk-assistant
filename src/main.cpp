@@ -37,6 +37,7 @@
 #include "TimerScreen.h"
 #include "PomodoroScreen.h"
 #include "WorldClockScreen.h"
+#include "CalendarDayScreen.h"
 #include "MusicPlayer.h"
 #include "MusicNowScreen.h"
 #include "MusicTracksScreen.h"
@@ -148,18 +149,27 @@ PomodoroScreen pomodoroScreen(nav, timerService);
 
 WorldClockScreen worldClockScreen(statusService.status(), configService);
 
+CalendarDayScreen calendarMorning(statusService.status(), agenda, CalendarDay::morningStartHour);
+CalendarDayScreen calendarAfternoon(statusService.status(), agenda, CalendarDay::afternoonStartHour);
+
 MusicPlayer musicPlayer;
 MusicLyricsScreen musicLyricsScreen(musicPlayer, nav);
 MusicNowScreen musicNowScreen(musicPlayer, nav, musicLyricsScreen);
 MusicTracksScreen musicTracksScreen(musicPlayer, nav);
 
 Screen* const mainSubPages[] = {&mainScreen, &todayScreen, &focusScreen, &quickMenuScreen};
+Screen* const calendarSubPages[] = {&calendarMorning, &calendarAfternoon};
 Screen* const weatherSubPages[] = {&weatherNowScreen, &weatherForecastScreen, &weatherRoomsScreen, &weatherAirScreen};
 Screen* const worldSubPages[] = {&worldClockScreen};
 Screen* const timerSubPages[] = {&timerScreen, &pomodoroScreen};
 Screen* const musicSubPages[] = {&musicNowScreen, &musicTracksScreen};
+uint8_t calendarEntry() {
+    return CalendarDayScreen::windowFor(statusService.status().minuteOfDay());
+}
+
 const Page pages[] = {
     {"Main", Icon::Main, mainSubPages, sizeof(mainSubPages) / sizeof(mainSubPages[0])},
+    {"Calendar", Icon::Calendar, calendarSubPages, sizeof(calendarSubPages) / sizeof(calendarSubPages[0]), calendarEntry},
     {"Weather", Icon::Weather, weatherSubPages, sizeof(weatherSubPages) / sizeof(weatherSubPages[0])},
     {"World", Icon::World, worldSubPages, sizeof(worldSubPages) / sizeof(worldSubPages[0])},
     {"Timer", Icon::Timer, timerSubPages, sizeof(timerSubPages) / sizeof(timerSubPages[0])},

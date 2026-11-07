@@ -26,4 +26,13 @@ inline void civilFromDays(int32_t days, int& year, unsigned& month, unsigned& da
 inline int mondayIndex(int32_t days) {
     return (int)(((days + 3) % 7 + 7) % 7);
 }
+
+inline int isoWeek(int year, unsigned month, unsigned day) {
+    int32_t days = daysFromCivil(year, month, day);
+    int32_t thursday = days - mondayIndex(days) + 3;
+    int thursdayYear;
+    unsigned thursdayMonth, thursdayDay;
+    civilFromDays(thursday, thursdayYear, thursdayMonth, thursdayDay);
+    return (int)((thursday - daysFromCivil(thursdayYear, 1, 1)) / 7 + 1);
+}
 }

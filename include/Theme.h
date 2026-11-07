@@ -16,6 +16,8 @@ constexpr uint16_t textDim    = rgb565(80, 84, 96);
 
 constexpr uint16_t accent     = 0xF9A0;
 constexpr uint16_t highlight  = rgb565(38, 10, 0);
+constexpr uint16_t eventNow   = rgb565(104, 22, 0);
+constexpr uint16_t gridLine   = rgb565(44, 46, 56);
 constexpr uint16_t barPast    = rgb565(96, 100, 112);
 constexpr uint16_t good       = rgb565(40, 235, 90);
 constexpr uint16_t alert      = rgb565(255, 36, 36);

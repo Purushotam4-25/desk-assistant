@@ -64,7 +64,7 @@ src/
   ScreenManager.cpp     holds the active screen; handles Home, Menu, sub-pages and detail views
   InputRouter.cpp       turns the encoder and the side buttons into one input stream
   *Screen.cpp           the pages: Main, Today, Focus, Weather (4), World clock, Timer, Pomodoro,
-                        Music (3), Quick menu, plus the Screens menu
+                        Music (3), Calendar (2), Quick menu, plus the Screens menu
   Widgets.cpp, Icons.cpp  shared drawing: status bar, icons, cards, buttons, scroll bar, ink-based text
   Fonts.cpp             the three GFX fonts and their glyph metrics
   StatusService.cpp     reads RTC, DHT11 and WiFi into one DeviceStatus
@@ -141,6 +141,6 @@ Upload is set to `COM4` in `platformio.ini`; change it to match your board. The 
 
 Everything runs on the real board except the newest pages, which are compiled but not yet checked on it. Drivers for the display, encoder, side buttons, RTC, DHT11, SD card and WiFi work. The device connects to WiFi in the background, sets the clock from NTP, and loads its settings from the SD card (falling back to its own saved copy with no card).
 
-Built pages: Main (clock, date, day bar, room climate, next event) with Today, Focus and the Quick menu as sub-pages; Focus stats; Weather (Now, Forecast, Rooms, Air); World clock; Timer and Pomodoro; Music (Now playing, Album tracks, Lyrics); and the Screens menu. Much of the data is sample data: agenda events, weather, focus history, and an invented album on a simulated music player (there is no audio hardware or music source yet). The Quick menu's Wi-Fi, Night and Brightness buttons only change on-screen state.
+Built pages: Main (clock, date, day bar, room climate, next event) with Today, Focus and the Quick menu as sub-pages; Focus stats; Calendar (Morning and Afternoon day views); Weather (Now, Forecast, Rooms, Air); World clock; Timer and Pomodoro; Music (Now playing, Album tracks, Lyrics); and the Screens menu. Much of the data is sample data: agenda events, weather, focus history, and an invented album on a simulated music player (there is no audio hardware or music source yet). The Quick menu's Wi-Fi, Night and Brightness buttons only change on-screen state.
 
-Still to do: a real calendar and weather source, a music source, brightness control (needs a transistor on the backlight), and the Calendar, Pet and Settings pages.
+Still to do: a real calendar and weather source, a music source, brightness control (needs a transistor on the backlight), and the Pet and Settings pages.
