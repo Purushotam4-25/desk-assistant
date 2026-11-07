@@ -1,16 +1,21 @@
 #pragma once
 #include <SdFat.h>
+#include <ArduinoJson.h>
+
+enum class JsonResult { Ok, Missing, Invalid };
 
 class SDManager {
 public:
     SDManager(uint8_t csPin);
-    bool begin();
+    bool begin(uint8_t maxMhz = 4);
+    bool present() const { return _present; }
 
-    bool writeFile(const char* filepath, const char* data);
-    String readFile(const char* filepath);
+    JsonResult readJsonRecovering(const char* path, JsonDocument& doc);
+    bool readJson(const char* path, JsonDocument& doc);
+    bool writeJsonAtomic(const char* path, const JsonDocument& doc, bool useBackup = true);
 
 private:
     uint8_t _csPin;
+    bool _present = false;
     SdFat _sd;
-    File32 _file;
 };

@@ -4,7 +4,9 @@
 .vscode/launch.json
 .vscode/ipch
 ai_context.md
+context.md
 gemini_context.md
+compile_commands.json
 claude.md
 DeskAssUI/
 docs/
@@ -14,3 +16,7 @@ HANDOFF.md
 WORKLOG.md
 plans/
 test/
+config.json
+secrets.json
+config.tmp
+config.bak

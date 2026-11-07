@@ -66,7 +66,8 @@ src/
   rot_encoder.cpp      encoder + button abstraction
   RTCManager.cpp       time and date
   DHTManager.cpp       temperature and humidity
-  SDManager.cpp        SD card read/write
+  SDManager.cpp        SD card, JSON read and crash-safe write
+  ConfigService.cpp    settings from the SD config files, saved copy in NVS, write-back
 include/
   Theme.h              every colour, in one place
   screens.h            Screen interface and RotaryInput events
@@ -99,9 +100,11 @@ The screens are mocked up in [Lopaka](https://lopaka.app) (`tft-espi`, 320x240) 
 ## SD card layout
 
 ```
-/fonts   .vlw smooth fonts for TFT_eSPI
-/images  .bmp icons
+/config.json    settings (home UTC offset, location, 12/24 hour clock)
+/secrets.json   WiFi name and password
 ```
+
+Both files are optional; see [`sd-card/`](sd-card/) for examples. The device keeps working with no card by falling back to built-in defaults and the last settings it saved to its own memory. Settings changed on the device are written back to `config.json` a few seconds after the change. The real files are gitignored and must never be committed.
 
 The UI uses GFX fonts (`Pixellari`, `VHS Gothic`, `Org_01`) compiled into flash from `include/fonts/`, so the card is not needed for fonts right now.
 
@@ -110,6 +113,7 @@ The UI uses GFX fonts (`Pixellari`, `VHS Gothic`, `Org_01`) compiled into flash 
 - `TFT_eSPI` for the display
 - `ESP32Encoder` and `OneButton` for the encoder
 - `SdFat` (Adafruit fork) for the SD card
+- `ArduinoJson` for the config files
 - `makuna/RTC` for the DS1302
 - `DHT sensor library` for the DHT11
 - `gpio_viewer`, `AsyncTCP` and `ESPAsyncWebServer` for debugging over WiFi

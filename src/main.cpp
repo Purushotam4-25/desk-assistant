@@ -6,6 +6,7 @@
 #include <gpio_viewer.h>
 #include <TFT_eSPI.h>
 #include "SDManager.h"
+#include "ConfigService.h"
 #include "DHTManager.h"
 #include "RTCManager.h"
 #include "rot_encoder.h"
@@ -64,6 +65,7 @@ WeatherData sampleWeather() {
 
 TFT_eSPI tft = TFT_eSPI();
 SDManager sdManager(5);
+ConfigService configService;
 RotaryEncoderManager encoder(32, 33, 15);
 RTCManager rtc(27, 26, 25);
 DHTManager dhtSensor(4);
@@ -91,7 +93,7 @@ TimerService timerService;
 TimerScreen timerScreen(nav, timerService);
 PomodoroScreen pomodoroScreen(nav, timerService);
 
-WorldClockScreen worldClockScreen(statusService.status());
+WorldClockScreen worldClockScreen(statusService.status(), configService);
 
 Screen* const mainSubPages[] = {&mainScreen, &todayScreen, &focusScreen};
 Screen* const weatherSubPages[] = {&weatherNowScreen, &weatherForecastScreen, &weatherRoomsScreen, &weatherAirScreen};
@@ -118,6 +120,7 @@ void setup() {
     bool sdOk = sdManager.begin();
     Serial.println(sdOk ? "SD init success" : "SD init failed");
     statusService.setSdOk(sdOk);
+    configService.begin(sdManager);
     statusService.update();
     focusSession.seedWeek(sampleWeekMinutes);
 
@@ -129,6 +132,7 @@ void setup() {
 
 void loop() {
     console.update();
+    configService.update();
     statusService.update();
     focusSession.update();
     timerService.update();

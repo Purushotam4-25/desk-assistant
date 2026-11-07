@@ -18,4 +18,3 @@ constexpr City worldCities[] = {
 
 constexpr int worldCityCount = sizeof(worldCities) / sizeof(worldCities[0]);
 constexpr int localCity = 0;
-constexpr int localOffsetMinutes = worldCities[localCity].offsetMinutes;
