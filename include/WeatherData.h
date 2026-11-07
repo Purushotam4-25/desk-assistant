@@ -1,7 +1,7 @@
 #pragma once
 #include <stdint.h>
 
-enum class WeatherCondition : uint8_t { Clear, MostlyClear, Cloudy, Rain };
+enum class WeatherCondition : uint8_t { Clear, MostlyClear, Cloudy, Rain, Fog, Showers, Storm };
 enum class UvLevel : uint8_t { Low, Moderate, High, Extreme };
 
 struct ForecastDay {
@@ -13,6 +13,7 @@ struct ForecastDay {
 struct WeatherData {
     uint32_t revision = 0;
     WeatherCondition condition = WeatherCondition::Clear;
+    bool isDay = true;
     int8_t temperatureC = 0;
     int8_t hi = 0;
     int8_t lo = 0;

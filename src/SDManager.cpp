@@ -1,7 +1,24 @@
 #include "SDManager.h"
+#include <SPI.h>
 
 namespace {
 constexpr size_t maxFileBytes = 2560;
+constexpr uint8_t initAttempts = 3;
+constexpr uint8_t retryMhz = 1;
+constexpr uint16_t retryDelayMs = 100;
+constexpr uint16_t flushBytes = 600;
+
+// A card reset in the middle of a block transfer keeps that block pending and ignores CMD0.
+// Clocking 0xFF with CS low lets it finish; CS high with more clocks then puts it back to idle.
+void flushCard(uint8_t csPin) {
+    SPI.begin();
+    SPI.beginTransaction(SPISettings(400000, MSBFIRST, SPI_MODE0));
+    digitalWrite(csPin, LOW);
+    for (uint16_t i = 0; i < flushBytes; i++) SPI.transfer(0xFF);
+    digitalWrite(csPin, HIGH);
+    for (uint8_t i = 0; i < 16; i++) SPI.transfer(0xFF);
+    SPI.endTransaction();
+}
 
 void siblingPath(const char* path, const char* extension, char* out, size_t size) {
     strlcpy(out, path, size);
@@ -14,12 +31,24 @@ void siblingPath(const char* path, const char* extension, char* out, size_t size
 SDManager::SDManager(uint8_t csPin) : _csPin(csPin) {}
 
 bool SDManager::begin(uint8_t maxMhz) {
-    _present = _sd.begin(_csPin, SD_SCK_MHZ(maxMhz));
-    if (!_present) {
-        Serial.printf("SD init failed at %u MHz (error 0x%02X, data 0x%02X)\n", maxMhz, _sd.sdErrorCode(),
-                      _sd.sdErrorData());
+    pinMode(_csPin, OUTPUT);
+    digitalWrite(_csPin, HIGH);
+
+    _mhz = maxMhz;
+    uint8_t mhz = maxMhz;
+    for (uint8_t attempt = 1; attempt <= initAttempts; attempt++) {
+        flushCard(_csPin);
+        _present = _sd.begin(_csPin, SD_SCK_MHZ(mhz));
+        if (_present) {
+            if (attempt > 1) Serial.printf("SD init worked on attempt %u\n", attempt);
+            return true;
+        }
+        Serial.printf("SD init failed at %u MHz (error 0x%02X, data 0x%02X, attempt %u of %u)\n", mhz,
+                      _sd.sdErrorCode(), _sd.sdErrorData(), attempt, initAttempts);
+        if (mhz > retryMhz) mhz = retryMhz;
+        delay(retryDelayMs);
     }
-    return _present;
+    return false;
 }
 
 bool SDManager::capacityMb(uint32_t& totalMb, uint32_t& freeMb, bool refresh) {
@@ -67,11 +96,16 @@ JsonResult SDManager::readJsonRecovering(const char* path, JsonDocument& doc) {
     return JsonResult::Missing;
 }
 
+bool SDManager::remount() {
+    _present = false;
+    _capacityKnown = false;
+    return begin(_mhz);
+}
+
+// A card that browned out and reset itself fails every command until it is initialised again,
+// while SdFat still believes it is mounted. So one failed save gets one remount and one retry.
 bool SDManager::writeJsonAtomic(const char* path, const JsonDocument& doc, bool useBackup) {
     if (!_present) return false;
-    char temp[32], backup[32];
-    siblingPath(path, ".tmp", temp, sizeof(temp));
-    siblingPath(path, ".bak", backup, sizeof(backup));
 
     char text[maxFileBytes];
     size_t length = serializeJsonPretty(doc, text, sizeof(text));
@@ -80,9 +114,21 @@ bool SDManager::writeJsonAtomic(const char* path, const JsonDocument& doc, bool 
         return false;
     }
 
+    if (replaceFile(path, text, length, useBackup)) return true;
+    Serial.println("SD: save failed, remounting the card to try once more");
+    if (!remount()) return false;
+    return replaceFile(path, text, length, useBackup);
+}
+
+bool SDManager::replaceFile(const char* path, const char* text, size_t length, bool useBackup) {
+    char temp[32], backup[32];
+    siblingPath(path, ".tmp", temp, sizeof(temp));
+    siblingPath(path, ".bak", backup, sizeof(backup));
+
     File32 file = _sd.open(temp, O_WRONLY | O_CREAT | O_TRUNC);
     if (!file) {
-        Serial.printf("%s: cannot open for writing\n", temp);
+        Serial.printf("%s: cannot open for writing (sd error 0x%02X/0x%02X)\n", temp, _sd.sdErrorCode(),
+                      _sd.sdErrorData());
         return false;
     }
     size_t wrote = file.write((const uint8_t*)text, length);
@@ -90,8 +136,8 @@ bool SDManager::writeJsonAtomic(const char* path, const JsonDocument& doc, bool 
     uint32_t size = file.fileSize();
     file.close();
     if (wrote != length || !synced || size != length) {
-        Serial.printf("%s: write failed (%u of %u bytes, size %u)\n", temp, (unsigned)wrote, (unsigned)length,
-                      (unsigned)size);
+        Serial.printf("%s: write failed (%u of %u bytes, size %u, sd error 0x%02X/0x%02X)\n", temp,
+                      (unsigned)wrote, (unsigned)length, (unsigned)size, _sd.sdErrorCode(), _sd.sdErrorData());
         _sd.remove(temp);
         return false;
     }

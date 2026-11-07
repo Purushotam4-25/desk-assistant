@@ -9,11 +9,17 @@ extern TFT_eSPI tft;
 
 namespace {
 constexpr int contentHeight = 216;
-constexpr int iconX = 28, iconY = 44, iconSize = 100;
-constexpr int tempX = 160, tempDigitTop = 52, tempScale = 4;
-constexpr int summaryY = 120, summaryMaxWidth = 150;
-constexpr int limitDigitTop = 162, limitScale = 2, limitCenterX = 160;
+constexpr int centerX = 160;
+constexpr int iconSize = 100, iconGap = 32;
+constexpr int tempScale = 4, tempRingGap = 10, tempRingRadius = 6;
+constexpr int summaryMaxWidth = 150;
+constexpr int limitScale = 2, limitCenterX = centerX;
 constexpr int labelGap = 5, ringGap = 3, ringRadius = 3, pairGap = 28;
+
+// The stack runs from the icon top (48) to the bottom of the limits row (190); shiftY centres it vertically.
+constexpr int stackTop = 48, stackBottom = 190;
+constexpr int shiftY = (contentHeight - (stackBottom - stackTop)) / 2 - stackTop;
+constexpr int iconY = 44 + shiftY, tempDigitTop = 52 + shiftY, summaryY = 120 + shiftY, limitDigitTop = 162 + shiftY;
 
 struct Limit {
     const char* label;
@@ -49,16 +55,27 @@ void WeatherNowScreen::drawRegions() {
     _dataKey = _weather.revision;
 
     tft.fillRect(0, 0, 320, contentHeight, Theme::background);
-    WeatherUi::icon(_weather.condition, iconX, iconY, iconSize, Theme::background);
-
     char temp[8];
     snprintf(temp, sizeof(temp), "%d", _weather.temperatureC);
-    int tempY = WeatherUi::yForDigitTop(Fonts::body, tempScale, tempDigitTop);
-    Widgets::text(temp, tempX, tempY, Fonts::body, tempScale, Theme::text);
     Widgets::Ink tempInk = Widgets::ink(temp, Fonts::body, tempScale);
-    WeatherUi::degree(tempX + tempInk.left + tempInk.width + 10, tempDigitTop + 8, 6, Theme::text);
+    Widgets::Ink summaryInk = Widgets::ink(_weather.summary, Fonts::body, 1);
+    int tempWidth = tempInk.width + tempRingGap + tempRingRadius + 1;
+    int summaryWidth = summaryInk.width < summaryMaxWidth ? summaryInk.width : summaryMaxWidth;
+    int textWidth = tempWidth > summaryWidth ? tempWidth : summaryWidth;
 
-    Widgets::fitText(_weather.summary, tempX, summaryY, summaryMaxWidth, Fonts::body, 1, Theme::textMuted);
+    int iconWidth = WeatherUi::iconWidth(_weather.condition, _weather.isDay, iconSize);
+    int groupLeft = centerX - (iconWidth + iconGap + textWidth) / 2;
+    int textLeft = groupLeft + iconWidth + iconGap;
+
+    WeatherUi::icon(_weather.condition, _weather.isDay, groupLeft + iconWidth / 2 - iconSize / 2, iconY, iconSize,
+                    Theme::background);
+
+    int tempY = WeatherUi::yForDigitTop(Fonts::body, tempScale, tempDigitTop);
+    Widgets::text(temp, textLeft - tempInk.left, tempY, Fonts::body, tempScale, Theme::text);
+    WeatherUi::degree(textLeft + tempInk.width + tempRingGap, tempDigitTop + 8, tempRingRadius, Theme::text);
+
+    Widgets::fitText(_weather.summary, textLeft - summaryInk.left, summaryY, summaryMaxWidth, Fonts::body, 1,
+                     Theme::textMuted);
 
     drawLimits();
 }

@@ -11,15 +11,15 @@ PORT = int(os.environ.get("PORT", "8765"))
 CACHE_SECONDS = int(os.environ.get("CACHE_MINUTES", "15")) * 60
 UPSTREAM = "https://api.open-meteo.com/v1/forecast"
 
-CLEAR, MOSTLY_CLEAR, CLOUDY, RAIN = 0, 1, 2, 3
+CLEAR, MOSTLY_CLEAR, CLOUDY, RAIN, FOG, SHOWERS, STORM = 0, 1, 2, 3, 4, 5, 6
 
 CODES = {
     0: (CLEAR, "Clear"),
     1: (MOSTLY_CLEAR, "Mostly clear"),
     2: (MOSTLY_CLEAR, "Partly cloudy"),
     3: (CLOUDY, "Cloudy"),
-    45: (CLOUDY, "Fog"),
-    48: (CLOUDY, "Freezing fog"),
+    45: (FOG, "Fog"),
+    48: (FOG, "Freezing fog"),
     51: (RAIN, "Light drizzle"),
     53: (RAIN, "Drizzle"),
     55: (RAIN, "Heavy drizzle"),
@@ -34,14 +34,14 @@ CODES = {
     73: (CLOUDY, "Snow"),
     75: (CLOUDY, "Heavy snow"),
     77: (CLOUDY, "Snow grains"),
-    80: (RAIN, "Light showers"),
-    81: (RAIN, "Showers"),
-    82: (RAIN, "Heavy showers"),
+    80: (SHOWERS, "Light showers"),
+    81: (SHOWERS, "Showers"),
+    82: (SHOWERS, "Heavy showers"),
     85: (CLOUDY, "Snow showers"),
     86: (CLOUDY, "Snow showers"),
-    95: (RAIN, "Thunderstorm"),
-    96: (RAIN, "Thunderstorm"),
-    99: (RAIN, "Thunderstorm"),
+    95: (STORM, "Thunderstorm"),
+    96: (STORM, "Thunderstorm"),
+    99: (STORM, "Thunderstorm"),
 }
 
 cache = {}

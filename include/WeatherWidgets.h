@@ -4,7 +4,8 @@
 #include "Fonts.h"
 
 namespace WeatherUi {
-void icon(WeatherCondition condition, int x, int y, int size, uint16_t background);
+void icon(WeatherCondition condition, bool isDay, int x, int y, int size, uint16_t background);
+int iconWidth(WeatherCondition condition, bool isDay, int size);
 void degree(int x, int y, int radius, uint16_t color);
 int yForDigitTop(const GFXfont* font, uint8_t scale, int digitTop);
 int digitHeight(const GFXfont* font, uint8_t scale);

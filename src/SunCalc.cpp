@@ -54,4 +54,11 @@ bool riseSet(double latitude, double longitude, int32_t localDays, int offsetMin
     setMinute = wrapDay(solarNoon + 4.0 * hourAngle);
     return true;
 }
+
+bool isDaylight(double latitude, double longitude, int32_t localDays, int offsetMinutes, int minuteOfDay) {
+    int rise, set;
+    if (!riseSet(latitude, longitude, localDays, offsetMinutes, rise, set)) return true;
+    if (rise <= set) return minuteOfDay >= rise && minuteOfDay < set;
+    return minuteOfDay >= rise || minuteOfDay < set;
+}
 }

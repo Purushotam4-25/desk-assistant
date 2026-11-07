@@ -56,14 +56,18 @@ void WeatherAirScreen::drawRegions() {
 
     char humidity[8], uv[8], rain[8];
     snprintf(humidity, sizeof(humidity), "%u%%", _weather.humidity);
-    snprintf(uv, sizeof(uv), "%u", _weather.uvIndex);
+    if (_weather.isDay) {
+        snprintf(uv, sizeof(uv), "%u", _weather.uvIndex);
+    } else {
+        snprintf(uv, sizeof(uv), "--");
+    }
     snprintf(rain, sizeof(rain), "%u%%", _weather.rainPercent);
 
     int valueY = yFor(valueDigitTop, valueScale);
     Widgets::inkTextCentered(humidity, labelCenter(humidityLabel, humidityLabelX), valueY, Fonts::body, valueScale,
                              Theme::text);
     Widgets::inkTextCentered(uv, labelCenter(uvLabel, uvLabelX), valueY, Fonts::body, valueScale,
-                             WeatherUi::uvColor(_weather.uvLevel()));
+                             _weather.isDay ? WeatherUi::uvColor(_weather.uvLevel()) : Theme::textMuted);
     Widgets::inkTextCentered(rain, centerX, yFor(bottomValueDigitTop, valueScale), Fonts::body, valueScale,
                              Theme::text);
 }

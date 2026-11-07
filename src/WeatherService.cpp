@@ -14,12 +14,15 @@ WeatherCondition conditionFrom(int id) {
         case 0: return WeatherCondition::Clear;
         case 1: return WeatherCondition::MostlyClear;
         case 3: return WeatherCondition::Rain;
+        case 4: return WeatherCondition::Fog;
+        case 5: return WeatherCondition::Showers;
+        case 6: return WeatherCondition::Storm;
         default: return WeatherCondition::Cloudy;
     }
 }
 
 bool sameData(const WeatherData& a, const WeatherData& b) {
-    if (a.condition != b.condition || a.temperatureC != b.temperatureC || a.hi != b.hi || a.lo != b.lo) return false;
+    if (a.condition != b.condition || a.isDay != b.isDay || a.temperatureC != b.temperatureC || a.hi != b.hi || a.lo != b.lo) return false;
     if (a.humidity != b.humidity || a.uvIndex != b.uvIndex || a.rainPercent != b.rainPercent) return false;
     if (strcmp(a.summary, b.summary) != 0) return false;
     for (int i = 0; i < 3; i++) {
@@ -93,6 +96,7 @@ void WeatherService::finishFetch(WeatherData& target) {
     _resultReady = false;
     if (_resultOk) {
         _result.revision = target.revision;
+        _result.isDay = target.isDay;
         if (!sameData(_result, target)) {
             target = _result;
             target.revision++;

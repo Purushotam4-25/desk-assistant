@@ -27,6 +27,7 @@ constexpr uint16_t warn       = rgb565(255, 232, 0);
 constexpr uint16_t sun        = rgb565(255, 232, 0);
 constexpr uint16_t cloud      = rgb565(215, 225, 240);
 constexpr uint16_t cloudDark  = rgb565(150, 165, 190);
+constexpr uint16_t moon       = rgb565(240, 235, 190);
 constexpr uint16_t rain       = rgb565(40, 160, 255);
 
 constexpr uint16_t uvLow      = rgb565(0, 230, 80);

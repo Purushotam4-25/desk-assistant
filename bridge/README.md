@@ -17,7 +17,7 @@ Example response:
 {"cond":1,"sum":"Mostly clear","temp":18,"hum":62,"hi":23,"lo":14,"uv":5,"rain":10,"fc":[{"c":0,"hi":24,"lo":14},{"c":2,"hi":20,"lo":13},{"c":3,"hi":17,"lo":11}],"age":0}
 ```
 
-`cond` / `c`: 0 Clear, 1 Mostly clear, 2 Cloudy, 3 Rain (snow and fog count as Cloudy).
+`cond` / `c`: 0 Clear, 1 Mostly clear, 2 Cloudy, 3 Rain, 4 Fog, 5 Showers, 6 Storm (snow counts as Cloudy). Day or night is worked out on the device from the sun position (`SunCalc`), so the bridge sends no day flag.
 
 ## Run on the Synology
 

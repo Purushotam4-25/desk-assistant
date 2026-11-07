@@ -30,6 +30,8 @@
 #include "QuickMenuScreen.h"
 #include "WeatherData.h"
 #include "WeatherService.h"
+#include "SunCalc.h"
+#include "DateMath.h"
 #include "WeatherNowScreen.h"
 #include "WeatherForecastScreen.h"
 #include "WeatherRoomsScreen.h"
@@ -160,6 +162,22 @@ MusicLyricsScreen musicLyricsScreen(musicPlayer, nav);
 MusicNowScreen musicNowScreen(musicPlayer, nav, musicLyricsScreen);
 MusicTracksScreen musicTracksScreen(musicPlayer, nav);
 
+void updateDaylight() {
+    static int32_t lastStamp = -1;
+    const DeviceStatus& status = statusService.status();
+    int32_t days = Date::daysFromCivil(status.now.year, status.now.month, status.now.day);
+    int32_t stamp = days * 1440 + status.minuteOfDay();
+    if (stamp == lastStamp) return;
+    lastStamp = stamp;
+
+    const Config& config = configService.config();
+    bool daylight = SunCalc::isDaylight(config.latitude, config.longitude, days, config.utcOffsetMinutes, status.minuteOfDay());
+    if (daylight != weather.isDay) {
+        weather.isDay = daylight;
+        weather.revision++;
+    }
+}
+
 void rebootDevice() {
     configService.commit();
     ESP.restart();
@@ -276,6 +294,8 @@ void setup() {
     dhtSensor.begin();
     encoder.begin();
 
+    pinMode(TFT_CS, OUTPUT);
+    digitalWrite(TFT_CS, HIGH);
     bool sdOk = sdManager.begin();
     Serial.println(sdOk ? "SD init success" : "SD init failed");
     statusService.setSdOk(sdOk);
@@ -301,6 +321,7 @@ void loop() {
     timeSync.update();
     weatherService.update(weather);
     statusService.update();
+    updateDaylight();
     focusSession.update();
     timerService.update();
     musicPlayer.update();

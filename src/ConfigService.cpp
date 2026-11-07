@@ -214,8 +214,12 @@ void ConfigService::update() {
     if (!_dirty || (int32_t)(millis() - _saveAt) < 0) return;
     writeMirror();
 
-    if (!_sd->present() || _saveBlocked || _failures >= maxFailures) {
+    if (_saveBlocked || _failures >= maxFailures) {
         _dirty = false;
+        return;
+    }
+    if (!_sd->present() && !_sd->remount()) {
+        _saveAt = millis() + retryDelayMs;
         return;
     }
     if (syncToCard()) {

@@ -38,7 +38,7 @@ void WeatherForecastScreen::drawDay(int slot) {
     int nameWidth = Widgets::textWidth(name, Fonts::title, 2);
     Widgets::text(name, x + (cardW - nameWidth) / 2, cardsY + 2, Fonts::title, 2, Theme::textMuted);
 
-    WeatherUi::icon(day.condition, x + iconOffsetX, cardsY + iconOffsetY, iconSize, Theme::surface);
+    WeatherUi::icon(day.condition, true, x + iconOffsetX, cardsY + iconOffsetY, iconSize, Theme::surface);
 
     char lo[8], hi[8];
     snprintf(lo, sizeof(lo), "%d", day.lo);
