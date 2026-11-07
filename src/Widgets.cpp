@@ -128,6 +128,16 @@ void fitText(const char* s, int x, int y, int maxWidth, const GFXfont* font, uin
     text(shortened, x, y, font, size, color);
 }
 
+void scrollBar(int x, int y, int height, int index, int count) {
+    constexpr int trackW = 8, thumbH = 28, dotStep = 8;
+    tft.fillRect(x, y, trackW, height, Theme::background);
+    for (int i = 0; i < (height + 4) / dotStep; i++) {
+        tft.fillRect(x + 3, y + i * dotStep, 2, 2, Theme::outline);
+    }
+    int top = y + index * (height - thumbH) / (count - 1);
+    tft.fillRoundRect(x, top, trackW, thumbH, 4, Theme::accent);
+}
+
 void card(int x, int y, int w, int h) {
     tft.fillRoundRect(x, y, w, h, 6, Theme::surface);
 }

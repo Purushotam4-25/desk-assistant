@@ -8,8 +8,7 @@ extern TFT_eSPI tft;
 
 namespace {
 constexpr int rowX = 10, rowY = 16, rowW = 284, rowH = 64, rowStep = 72, labelMaxWidth = 200;
-constexpr int barX = 306, barY = 16, barH = 208, thumbW = 8, thumbH = 28;
-constexpr int dotCount = 26, dotStep = 8;
+constexpr int barX = 306, barY = 16, barH = 208;
 }
 
 ScreensMenu::ScreensMenu(const Page* pages, uint8_t pageCount) : _pages(pages) {
@@ -89,11 +88,5 @@ void ScreensMenu::drawScrollBar() {
     if (_focus.count <= visibleRows) return;
     if (_focus.index == _barKey) return;
     _barKey = _focus.index;
-
-    tft.fillRect(barX, barY, thumbW, barH, Theme::background);
-    for (int i = 0; i < dotCount; i++) {
-        tft.fillRect(barX + 3, barY + i * dotStep, 2, 2, Theme::outline);
-    }
-    int top = barY + _focus.index * (barH - thumbH) / (_focus.count - 1);
-    tft.fillRoundRect(barX, top, thumbW, thumbH, 4, Theme::accent);
+    Widgets::scrollBar(barX, barY, barH, _focus.index, _focus.count);
 }

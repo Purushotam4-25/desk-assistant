@@ -26,6 +26,7 @@ private:
     Screen* active();
     void show(uint8_t page, uint8_t subPage);
     void closeDetail();
+    void navigate(const NavTarget& target);
     void dispatch(Input input);
     void stepSubPage(int step);
 };

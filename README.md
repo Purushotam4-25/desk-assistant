@@ -15,7 +15,7 @@ Built with PlatformIO and the Arduino framework. This is a learning project, so 
 | Clock | DS1302 RTC | CR2032 backup battery |
 | Sensor | DHT11 | Temperature and humidity |
 
-All grounds are shared. The ESP32 runs on USB or VIN (5V); everything else sits on 3.3V.
+All grounds are shared. The ESP32 runs on USB or VIN (5V). The SD module's VCC goes to 5V (its onboard regulator needs the headroom; on 3.3V the card gets only about 2V and fails intermittently). Everything else sits on 3.3V.
 
 ## Wiring
 
@@ -131,4 +131,4 @@ Upload is set to `COM4` in `platformio.ini`; change it to match your board. A se
 
 ## Status
 
-Drivers for the display, encoder, RTC, DHT11, SD card and WiFi work. The Main page shows the real RTC clock, date, room temperature and humidity, a day-progress bar and the next event; the Today page shows the agenda. Both are driven by live data, but the events are sample data and neither page has been tested on the board yet. There is no way to switch pages yet. Still to do: page navigation, the remaining pages, and a real calendar source.
+Drivers for the display, encoder, RTC, DHT11, SD card and WiFi work. The Main page shows the real RTC clock, date, room temperature and humidity, a day-progress bar and the next event; the Today page shows the agenda. The Screens menu, sub-pages and side buttons move between pages. Built pages: Main, Today, Focus and Focus stats, Weather (Now, Forecast, Rooms, Air), World clock, Timer and Pomodoro, Music (Now playing, Album tracks, Lyrics), and the Quick menu. Much of the data is sample data (agenda events, weather, focus history, and an invented album on a simulated music player, since there is no audio hardware or music source yet). Still to do: WiFi connection and NTP, real calendar and weather sources, a music source, and the Calendar, Quick menu, Pet and Settings pages.
