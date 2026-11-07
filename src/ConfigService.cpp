@@ -9,15 +9,33 @@ constexpr uint32_t saveDelayMs = 3000;
 constexpr uint32_t retryDelayMs = 30000;
 constexpr uint8_t maxFailures = 3;
 
+bool bound(SettingId id) {
+    return id == SettingId::TimeFormat || id == SettingId::TimeZone || id == SettingId::AutoSync;
+}
+
 bool validOffset(int minutes) { return minutes >= -840 && minutes <= 840; }
 bool validLatitude(float degrees) { return degrees >= -90.0f && degrees <= 90.0f; }
 bool validLongitude(float degrees) { return degrees >= -180.0f && degrees <= 180.0f; }
 }
 
+ConfigService::ConfigService() {
+    applyDefaults();
+}
+
+void ConfigService::applyDefaults() {
+    for (uint8_t i = 0; i < Settings::count; i++) _values[i] = Settings::def(static_cast<SettingId>(i)).fallback;
+}
+
+void ConfigService::syncBoundValues() {
+    _values[static_cast<uint8_t>(SettingId::TimeFormat)] = _config.use24Hour;
+    _values[static_cast<uint8_t>(SettingId::TimeZone)] = _config.utcOffsetMinutes;
+    _values[static_cast<uint8_t>(SettingId::AutoSync)] = _config.ntp;
+}
+
 void ConfigService::begin(SDManager& sd) {
     _sd = &sd;
     _prefs.begin(nvsNamespace, false);
-    _pending = _prefs.getUInt("pend", 0);
+    _pending = _prefs.getULong64("pend64", _prefs.getUInt("pend", 0));
     loadMirror();
 
     bool needSync = false;
@@ -37,6 +55,7 @@ void ConfigService::begin(SDManager& sd) {
     }
 
     applySecrets();
+    syncBoundValues();
     writeMirror();
     if (needSync && !_saveBlocked) syncToCard();
 }
@@ -49,12 +68,19 @@ void ConfigService::loadMirror() {
     _config.ntp = _prefs.getBool("ntp", _config.ntp);
     _prefs.getString("wssid", _config.wifiSsid, sizeof(_config.wifiSsid));
     _prefs.getString("wpass", _config.wifiPassword, sizeof(_config.wifiPassword));
+    _prefs.getString("bridge", _config.bridgeUrl, sizeof(_config.bridgeUrl));
+
+    for (uint8_t i = 0; i < Settings::count; i++) {
+        SettingId id = static_cast<SettingId>(i);
+        if (bound(id)) continue;
+        _values[i] = Settings::clamp(id, _prefs.getShort(Settings::def(id).key, Settings::def(id).fallback));
+    }
 }
 
 void ConfigService::applyFile() {
     JsonObject root = _doc.as<JsonObject>();
 
-    if (root["utcOffsetMinutes"].is<int>() && validOffset(root["utcOffsetMinutes"])) {
+    if (!pending(SettingId::TimeZone) && root["utcOffsetMinutes"].is<int>() && validOffset(root["utcOffsetMinutes"])) {
         _config.utcOffsetMinutes = root["utcOffsetMinutes"];
     }
     if (root["latitude"].is<float>() && validLatitude(root["latitude"])) {
@@ -63,11 +89,24 @@ void ConfigService::applyFile() {
     if (root["longitude"].is<float>() && validLongitude(root["longitude"])) {
         _config.longitude = root["longitude"];
     }
-    if (!(_pending & (1u << Use24Hour)) && root["use24Hour"].is<bool>()) {
+    if (!pending(SettingId::TimeFormat) && root["use24Hour"].is<bool>()) {
         _config.use24Hour = root["use24Hour"];
     }
-    if (root["ntp"].is<bool>()) {
+    if (!pending(SettingId::AutoSync) && root["ntp"].is<bool>()) {
         _config.ntp = root["ntp"];
+    }
+
+    if (root["bridgeUrl"].is<const char*>()) {
+        strlcpy(_config.bridgeUrl, root["bridgeUrl"], sizeof(_config.bridgeUrl));
+    }
+
+    JsonObject settings = root["settings"];
+    for (uint8_t i = 0; i < Settings::count; i++) {
+        SettingId id = static_cast<SettingId>(i);
+        const SettingDef& d = Settings::def(id);
+        if (bound(id) || pending(id) || !settings[d.key].is<int>()) continue;
+        int fileValue = settings[d.key];
+        if (fileValue >= d.min && fileValue <= d.max) _values[i] = fileValue;
     }
 }
 
@@ -96,7 +135,13 @@ void ConfigService::writeMirror() {
     _prefs.putBool("ntp", _config.ntp);
     _prefs.putString("wssid", _config.wifiSsid);
     _prefs.putString("wpass", _config.wifiPassword);
-    _prefs.putUInt("pend", _pending);
+    _prefs.putString("bridge", _config.bridgeUrl);
+    _prefs.putULong64("pend64", _pending);
+
+    for (uint8_t i = 0; i < Settings::count; i++) {
+        SettingId id = static_cast<SettingId>(i);
+        if (!bound(id)) _prefs.putShort(Settings::def(id).key, _values[i]);
+    }
 }
 
 void ConfigService::fillDocument() {
@@ -106,18 +151,63 @@ void ConfigService::fillDocument() {
     _doc["longitude"] = _config.longitude;
     _doc["use24Hour"] = _config.use24Hour;
     _doc["ntp"] = _config.ntp;
+    _doc["bridgeUrl"] = _config.bridgeUrl;
+
+    JsonObject settings = _doc["settings"].to<JsonObject>();
+    for (uint8_t i = 0; i < Settings::count; i++) {
+        SettingId id = static_cast<SettingId>(i);
+        if (!bound(id)) settings[Settings::def(id).key] = _values[i];
+    }
 }
 
-void ConfigService::setUse24Hour(bool value) {
-    if (_config.use24Hour == value) return;
-    _config.use24Hour = value;
-    markChanged(Use24Hour);
+void ConfigService::setValue(SettingId id, int16_t value) {
+    value = Settings::clamp(id, value);
+    if (_values[static_cast<uint8_t>(id)] == value) return;
+    _values[static_cast<uint8_t>(id)] = value;
+    switch (id) {
+        case SettingId::TimeFormat: _config.use24Hour = value; break;
+        case SettingId::TimeZone: _config.utcOffsetMinutes = value; break;
+        case SettingId::AutoSync: _config.ntp = value; break;
+        default: break;
+    }
+    markChanged(id);
+    _revision++;
 }
 
-void ConfigService::markChanged(Setting setting) {
-    _pending |= 1u << setting;
+void ConfigService::markChanged(SettingId id) {
+    _pending |= 1ULL << static_cast<uint8_t>(id);
     _dirty = true;
     _saveAt = millis() + saveDelayMs;
+}
+
+void ConfigService::flushNow() {
+    _pending = ~0ULL >> (64 - Settings::count);
+    _revision++;
+    writeMirror();
+    _dirty = !(_sd && _sd->present() && !_saveBlocked && syncToCard());
+    _saveAt = millis() + retryDelayMs;
+}
+
+void ConfigService::resetSettings() {
+    applyDefaults();
+    _config.use24Hour = _values[static_cast<uint8_t>(SettingId::TimeFormat)];
+    _config.utcOffsetMinutes = _values[static_cast<uint8_t>(SettingId::TimeZone)];
+    _config.ntp = _values[static_cast<uint8_t>(SettingId::AutoSync)];
+    flushNow();
+}
+
+void ConfigService::factoryReset() {
+    _prefs.clear();
+    _config = Config();
+    applyDefaults();
+    flushNow();
+}
+
+void ConfigService::commit() {
+    if (!_dirty) return;
+    writeMirror();
+    if (_sd && _sd->present() && !_saveBlocked && _failures < maxFailures) syncToCard();
+    _dirty = false;
 }
 
 void ConfigService::update() {
@@ -140,7 +230,7 @@ bool ConfigService::syncToCard() {
     if (_sd->writeJsonAtomic(configPath, _doc)) {
         _failures = 0;
         _pending = 0;
-        _prefs.putUInt("pend", 0);
+        _prefs.putULong64("pend64", 0);
         Serial.println("Config: saved config.json");
         return true;
     }

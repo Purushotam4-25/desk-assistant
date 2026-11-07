@@ -1,7 +1,7 @@
 #include "SDManager.h"
 
 namespace {
-constexpr size_t maxFileBytes = 768;
+constexpr size_t maxFileBytes = 2560;
 
 void siblingPath(const char* path, const char* extension, char* out, size_t size) {
     strlcpy(out, path, size);
@@ -20,6 +20,20 @@ bool SDManager::begin(uint8_t maxMhz) {
                       _sd.sdErrorData());
     }
     return _present;
+}
+
+bool SDManager::capacityMb(uint32_t& totalMb, uint32_t& freeMb, bool refresh) {
+    if (!_present) return false;
+    if (refresh || !_capacityKnown) {
+        int32_t freeClusters = _sd.vol()->freeClusterCount();
+        if (freeClusters < 0) return false;
+        _totalMb = _sd.card()->sectorCount() / 2048;
+        _freeMb = (uint64_t)freeClusters * _sd.vol()->bytesPerCluster() / (1024UL * 1024UL);
+        _capacityKnown = true;
+    }
+    totalMb = _totalMb;
+    freeMb = _freeMb;
+    return true;
 }
 
 bool SDManager::readJson(const char* path, JsonDocument& doc) {

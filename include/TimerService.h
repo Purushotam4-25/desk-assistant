@@ -29,7 +29,6 @@ public:
     static constexpr int rounds = 4;
     static constexpr uint32_t minTimerSeconds = 1, maxTimerSeconds = 99 * 60 + 59;
     static constexpr int minFocusMinutes = 1, maxFocusMinutes = 60;
-    static constexpr int shortBreakMinutes = 5, longBreakMinutes = 15;
 
     void update();
 
@@ -49,6 +48,9 @@ public:
     uint32_t pomoSeconds() const;
     int focusMinutes() const { return _focusMinutes; }
     void setFocusMinutes(int minutes);
+    int shortBreakMinutes() const { return _shortBreakMinutes; }
+    int longBreakMinutes() const { return _longBreakMinutes; }
+    void setBreakMinutes(int shortMinutes, int longMinutes);
     void pomoStart();
     void pomoPause();
     void pomoResume();
@@ -59,6 +61,8 @@ private:
     Countdown _pomo;
     uint32_t _timerSetSeconds = 10 * 60;
     int _focusMinutes = 25;
+    int _shortBreakMinutes = 5;
+    int _longBreakMinutes = 15;
     int _round = 1;
     PomoPhase _phase = PomoPhase::Focus;
 

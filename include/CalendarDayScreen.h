@@ -3,10 +3,14 @@
 #include "DeviceStatus.h"
 #include "Agenda.h"
 
+struct CalendarSurface;
+
 namespace CalendarDay {
 constexpr uint8_t morningStartHour = 8;
 constexpr uint8_t afternoonStartHour = 13;
 constexpr uint8_t windowHours = 5;
+constexpr uint16_t scrollStepMinutes = 30;
+constexpr uint16_t maxStartMinute = (24 - windowHours) * 60;
 }
 
 class CalendarDayScreen : public Screen {
@@ -38,9 +42,10 @@ private:
 
     const DeviceStatus& _status;
     const Agenda& _agenda;
-    uint8_t _startHour;
+    uint16_t _presetStart;
     uint16_t _windowStart;
     uint16_t _windowEnd;
+    uint16_t _targetStart;
     Block _blocks[maxBlocks];
     uint8_t _blockCount = 0;
     bool _full = true;
@@ -50,19 +55,24 @@ private:
     uint8_t _hiddenLabels = 0;
     int _paintX = 0, _paintY = 0, _paintW = 0, _paintH = 0;
 
+    void applyWindow(uint16_t start);
     int yOfMinute(uint16_t minute) const;
     bool inWindow(uint16_t minute) const;
+    int firstLineMinute() const;
+    int lineCount() const;
+    int lineY(int index) const;
     bool overlapsPaint(int x0, int y0, int x1, int y1) const;
     uint8_t hiddenMaskFor(int nowY) const;
     void buildLayout(uint16_t now);
     void setNow(uint16_t now);
     void fullRedraw(uint16_t now);
+    void scrollRedraw(uint16_t now);
     void updateLive(uint16_t now);
     void drawHeader();
-    void paintRect(int x, int y, int w, int h);
-    void drawGrid();
-    void drawBlock(const Block& block);
-    void drawNowLine(uint16_t now);
-    void paintLineBand(int y);
-    void paintLabelBand(int y);
+    void repaintRows(int y0, int y1);
+    void paintBand(int top, int rows);
+    void compose(const CalendarSurface& surface);
+    void drawGrid(const CalendarSurface& surface);
+    void drawBlock(const CalendarSurface& surface, const Block& block);
+    void drawNowLine(const CalendarSurface& surface);
 };

@@ -18,4 +18,5 @@ public:
     virtual void handleInput(Input input) = 0;
     virtual Screen* takeDetail() { return nullptr; }
     virtual bool takeNavigation(NavTarget& target) { return false; }
+    virtual bool usesSideButtons() const { return false; }
 };

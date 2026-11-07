@@ -29,6 +29,7 @@
 #include "QuickSettings.h"
 #include "QuickMenuScreen.h"
 #include "WeatherData.h"
+#include "WeatherService.h"
 #include "WeatherNowScreen.h"
 #include "WeatherForecastScreen.h"
 #include "WeatherRoomsScreen.h"
@@ -42,6 +43,7 @@
 #include "MusicNowScreen.h"
 #include "MusicTracksScreen.h"
 #include "MusicLyricsScreen.h"
+#include "SettingsScreen.h"
 
 const MusicLyric lowTideLyrics[] = {
     {8, "Footprints fade slowly", "along the water line"},
@@ -138,6 +140,7 @@ QuickSettings quickSettings;
 QuickMenuScreen quickMenuScreen(statusService.status(), nav, quickSettings);
 
 WeatherData weather = sampleWeather();
+WeatherService weatherService(configService, wifi);
 WeatherNowScreen weatherNowScreen(weather, nav);
 WeatherForecastScreen weatherForecastScreen(weather, statusService.status(), nav);
 WeatherRoomsScreen weatherRoomsScreen(weather, statusService.status(), nav);
@@ -157,14 +160,41 @@ MusicLyricsScreen musicLyricsScreen(musicPlayer, nav);
 MusicNowScreen musicNowScreen(musicPlayer, nav, musicLyricsScreen);
 MusicTracksScreen musicTracksScreen(musicPlayer, nav);
 
+void rebootDevice() {
+    configService.commit();
+    ESP.restart();
+}
+
+void refreshWeather() {
+    weatherService.refreshNow();
+}
+
+void reconnectWifi() {
+    wifi.reconnect();
+}
+
+void reinitSensor() {
+    statusService.reinitSensor();
+}
+
+SettingsContext settingsContext = {configService, statusService.status(), statusService, wifi, timeSync, sdManager, weatherService};
+SettingsActions settingsActions = {refreshWeather, rebootDevice, reconnectWifi, reinitSensor};
+SettingsScreen settingsScreen(settingsContext, settingsActions);
+
 Screen* const mainSubPages[] = {&mainScreen, &todayScreen, &focusScreen, &quickMenuScreen};
 Screen* const calendarSubPages[] = {&calendarMorning, &calendarAfternoon};
 Screen* const weatherSubPages[] = {&weatherNowScreen, &weatherForecastScreen, &weatherRoomsScreen, &weatherAirScreen};
 Screen* const worldSubPages[] = {&worldClockScreen};
 Screen* const timerSubPages[] = {&timerScreen, &pomodoroScreen};
 Screen* const musicSubPages[] = {&musicNowScreen, &musicTracksScreen};
+Screen* const settingsSubPages[] = {&settingsScreen};
 uint8_t calendarEntry() {
     return CalendarDayScreen::windowFor(statusService.status().minuteOfDay());
+}
+
+uint8_t settingsEntry() {
+    settingsScreen.openRoot();
+    return 0;
 }
 
 const Page pages[] = {
@@ -174,8 +204,67 @@ const Page pages[] = {
     {"World", Icon::World, worldSubPages, sizeof(worldSubPages) / sizeof(worldSubPages[0])},
     {"Timer", Icon::Timer, timerSubPages, sizeof(timerSubPages) / sizeof(timerSubPages[0])},
     {"Music", Icon::Music, musicSubPages, sizeof(musicSubPages) / sizeof(musicSubPages[0])},
+    {"Settings", Icon::Settings, settingsSubPages, sizeof(settingsSubPages) / sizeof(settingsSubPages[0]), settingsEntry},
 };
 constexpr uint8_t pageCount = sizeof(pages) / sizeof(pages[0]);
+
+const uint16_t sensorIntervalSeconds[] = {10, 30, 60, 300};
+
+struct AppliedSettings {
+    int16_t timerDefault = -1;
+    int16_t focus = -1;
+    int16_t shortBreak = -1;
+    int16_t longBreak = -1;
+    int16_t sensorInterval = -1;
+    int16_t tempOffset = 0x7FFF;
+    int16_t humidityOffset = 0x7FFF;
+} applied;
+uint32_t appliedRevision = UINT32_MAX;
+
+void applySettings() {
+    if (configService.revision() == appliedRevision) return;
+    bool deferred = false;
+
+    int16_t timerDefault = configService.value(SettingId::TimerDefault);
+    if (timerDefault != applied.timerDefault) {
+        if (timerService.timerState() == TimerState::Set) {
+            timerService.setTimerSetSeconds(timerDefault);
+            applied.timerDefault = timerDefault;
+        } else {
+            deferred = true;
+        }
+    }
+
+    int16_t focus = configService.value(SettingId::PomoFocus);
+    if (focus != applied.focus) {
+        if (timerService.pomoState() == PomoState::Set) {
+            timerService.setFocusMinutes(focus);
+            applied.focus = focus;
+        } else {
+            deferred = true;
+        }
+    }
+
+    int16_t shortBreak = configService.value(SettingId::PomoShort);
+    int16_t longBreak = configService.value(SettingId::PomoLong);
+    if (shortBreak != applied.shortBreak || longBreak != applied.longBreak) {
+        timerService.setBreakMinutes(shortBreak, longBreak);
+        applied.shortBreak = shortBreak;
+        applied.longBreak = longBreak;
+    }
+
+    int16_t interval = configService.value(SettingId::SensorInterval);
+    int16_t tempOffset = configService.value(SettingId::SensorTempOffset);
+    int16_t humidityOffset = configService.value(SettingId::SensorHumOffset);
+    if (interval != applied.sensorInterval || tempOffset != applied.tempOffset || humidityOffset != applied.humidityOffset) {
+        statusService.setSensorTuning(sensorIntervalSeconds[interval] * 1000UL, tempOffset, humidityOffset);
+        applied.sensorInterval = interval;
+        applied.tempOffset = tempOffset;
+        applied.humidityOffset = humidityOffset;
+    }
+
+    if (!deferred) appliedRevision = configService.revision();
+}
 
 ScreensMenu screensMenu(pages, pageCount);
 ScreenManager screens(input, nav, pages, pageCount, screensMenu);
@@ -191,6 +280,7 @@ void setup() {
     Serial.println(sdOk ? "SD init success" : "SD init failed");
     statusService.setSdOk(sdOk);
     configService.begin(sdManager);
+    applySettings();
     statusService.update();
     focusSession.seedWeek(sampleWeekMinutes);
     musicPlayer.setAlbum(sampleAlbum, sampleTracks, sizeof(sampleTracks) / sizeof(sampleTracks[0]));
@@ -200,13 +290,16 @@ void setup() {
 
     screens.begin();
     wifi.begin(configService.config());
+    weatherService.begin();
 }
 
 void loop() {
     console.update();
     configService.update();
+    applySettings();
     wifi.update();
     timeSync.update();
+    weatherService.update(weather);
     statusService.update();
     focusSession.update();
     timerService.update();

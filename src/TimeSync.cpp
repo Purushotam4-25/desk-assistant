@@ -77,4 +77,5 @@ void TimeSync::check() {
         Serial.println("Time: RTC already in sync");
     }
     _synced = true;
+    _lastSyncAt = millis();
 }

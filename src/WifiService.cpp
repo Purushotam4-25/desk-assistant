@@ -33,6 +33,7 @@ void WifiService::update() {
             if (status == WL_CONNECTED) {
                 _retryDelayMs = firstRetryMs;
                 Serial.printf("WiFi: connected, IP %s\n", WiFi.localIP().toString().c_str());
+                _connectedSince = millis();
                 setState(State::Connected);
             } else if (status == WL_NO_SSID_AVAIL || status == WL_CONNECT_FAILED || elapsed >= attemptTimeoutMs) {
                 failAttempt(status);
@@ -40,6 +41,7 @@ void WifiService::update() {
             break;
         case State::Connected:
             if (status != WL_CONNECTED) {
+                _lastDropReason = "Connection lost";
                 Serial.printf("WiFi: connection lost, reconnecting in %lu s\n", (unsigned long)(_retryDelayMs / 1000));
                 setState(State::Waiting);
             }
@@ -77,8 +79,20 @@ void WifiService::startAttempt() {
     setState(State::Connecting);
 }
 
+void WifiService::reconnect() {
+    if (_state == State::Off) return;
+    _retryDelayMs = firstRetryMs;
+    startAttempt();
+}
+
 void WifiService::failAttempt(wl_status_t status) {
     WiFi.disconnect();
+    _retries++;
+    switch (status) {
+        case WL_NO_SSID_AVAIL: _lastDropReason = "Network not found"; break;
+        case WL_CONNECT_FAILED: _lastDropReason = "Wrong password"; break;
+        default: _lastDropReason = "Timed out"; break;
+    }
     Serial.printf("WiFi: attempt failed (status %d), retrying in %lu s\n", (int)status,
                   (unsigned long)(_retryDelayMs / 1000));
     setState(State::Waiting);

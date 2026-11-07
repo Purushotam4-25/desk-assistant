@@ -92,6 +92,11 @@ void TimerService::setFocusMinutes(int minutes) {
     _focusMinutes = minutes;
 }
 
+void TimerService::setBreakMinutes(int shortMinutes, int longMinutes) {
+    _shortBreakMinutes = shortMinutes < 1 ? 1 : shortMinutes;
+    _longBreakMinutes = longMinutes < 1 ? 1 : longMinutes;
+}
+
 void TimerService::pomoStart() {
     if (_pomo.state() != Countdown::State::Idle) return;
     _round = 1;
@@ -113,10 +118,10 @@ void TimerService::advancePomodoro() {
         case PomoPhase::Focus:
             if (_round < rounds) {
                 _phase = PomoPhase::Break;
-                _pomo.start(shortBreakMinutes * 60UL);
+                _pomo.start(_shortBreakMinutes * 60UL);
             } else {
                 _phase = PomoPhase::LongBreak;
-                _pomo.start(longBreakMinutes * 60UL);
+                _pomo.start(_longBreakMinutes * 60UL);
             }
             break;
         case PomoPhase::Break:

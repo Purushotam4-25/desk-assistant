@@ -20,3 +20,5 @@ config.json
 secrets.json
 config.tmp
 config.bak
+bridge/.env
+sd-card/

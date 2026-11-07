@@ -4,5 +4,6 @@
   "latitude": 19.08,
   "longitude": 72.88,
   "use24Hour": false,
-  "ntp": true
+  "ntp": true,
+  "bridgeUrl": "http://192.168.1.50:8765"
 }

@@ -1,0 +1,9 @@
+services:
+  desk-bridge:
+    build: .
+    container_name: desk-bridge
+    restart: unless-stopped
+    ports:
+      - "8765:8765"
+    environment:
+      CACHE_MINUTES: "15"

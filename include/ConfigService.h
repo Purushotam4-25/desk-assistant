@@ -2,6 +2,7 @@
 #include <Preferences.h>
 #include <ArduinoJson.h>
 #include "SDManager.h"
+#include "Settings.h"
 
 struct Config {
     int16_t utcOffsetMinutes = 330;
@@ -11,23 +12,31 @@ struct Config {
     bool ntp = true;
     char wifiSsid[33] = "";
     char wifiPassword[64] = "";
+    char bridgeUrl[64] = "";
 };
 
 class ConfigService {
 public:
+    ConfigService();
     void begin(SDManager& sd);
     void update();
+    void commit();
     const Config& config() const { return _config; }
-    void setUse24Hour(bool value);
+    int16_t value(SettingId id) const { return _values[static_cast<uint8_t>(id)]; }
+    void setValue(SettingId id, int16_t value);
+    void setUse24Hour(bool value) { setValue(SettingId::TimeFormat, value); }
+    uint32_t revision() const { return _revision; }
+    void resetSettings();
+    void factoryReset();
 
 private:
-    enum Setting : uint8_t { Use24Hour };
-
     Config _config;
+    int16_t _values[Settings::count];
+    uint32_t _revision = 0;
     Preferences _prefs;
     JsonDocument _doc;
     SDManager* _sd = nullptr;
-    uint32_t _pending = 0;
+    uint64_t _pending = 0;
     uint32_t _saveAt = 0;
     uint8_t _failures = 0;
     bool _dirty = false;
@@ -38,6 +47,10 @@ private:
     void applySecrets();
     void writeMirror();
     void fillDocument();
-    void markChanged(Setting setting);
+    void markChanged(SettingId id);
     bool syncToCard();
+    void syncBoundValues();
+    void applyDefaults();
+    void flushNow();
+    bool pending(SettingId id) const { return _pending & (1ULL << static_cast<uint8_t>(id)); }
 };

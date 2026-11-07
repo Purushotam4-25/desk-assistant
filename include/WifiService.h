@@ -12,12 +12,19 @@ public:
     State state() const { return _state; }
     bool connected() const { return _state == State::Connected; }
     const char* stateName() const;
+    void reconnect();
+    uint16_t retries() const { return _retries; }
+    uint32_t connectedSince() const { return _connectedSince; }
+    const char* lastDropReason() const { return _lastDropReason; }
 
 private:
     const Config* _config = nullptr;
     State _state = State::Off;
     uint32_t _stateSince = 0;
     uint32_t _retryDelayMs = 0;
+    uint16_t _retries = 0;
+    uint32_t _connectedSince = 0;
+    const char* _lastDropReason = "none";
 
     void setState(State state);
     void startAttempt();

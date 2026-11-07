@@ -70,6 +70,7 @@ void ScreenManager::dispatch(Input input) {
                 closeDetail();
                 return;
             }
+            if (active()->usesSideButtons()) break;
             if (_pages[_page].count < 2) return;
             stepSubPage(input == Input::SubPageNext ? 1 : -1);
             return;

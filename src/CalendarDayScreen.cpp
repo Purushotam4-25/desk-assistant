@@ -9,19 +9,67 @@
 
 extern TFT_eSPI tft;
 
+struct CalendarSurface {
+    TFT_eSPI* g;
+    int dy;
+};
+
 namespace {
-constexpr int headerRuleY = 26, headerCentre = 13, sideMargin = 10;
+constexpr int headerRuleY = 26, headerCentre = 13, sideMargin = 10, screenHeight = 240;
 constexpr int labelColumn = 44, labelCentre = 22;
-constexpr int gridTop = 38, hourStep = 38, lineCount = 6;
+constexpr int gridTop = 38, hourStep = 38;
 constexpr int areaLeft = 48, areaRight = 310;
 constexpr int columnGap = 2, maxColumns = 4;
 constexpr int accentBar = 4, textInset = 10, textPadRight = 6;
 constexpr int fullMinCard = 34, textMinCard = 17;
 constexpr int fullTitleTop = 4, fullTimeTop = 22;
 constexpr int nowDotRadius = 3, labelHideRange = 13;
+constexpr int bandHeight = 24;
 
 const char* const monthNames[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
 const char* const weekdayNames[] = {"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"};
+
+TFT_eSprite* band = nullptr;
+bool bandFailed = false;
+
+TFT_eSprite* bandSprite() {
+    if (band || bandFailed) return band;
+    band = new TFT_eSprite(&tft);
+    if (!band->createSprite(320, bandHeight)) {
+        delete band;
+        band = nullptr;
+        bandFailed = true;
+    }
+    return band;
+}
+
+void fillOn(const CalendarSurface& s, int x, int y, int w, int h, uint16_t color) {
+    s.g->fillRect(x, y - s.dy, w, h, color);
+}
+
+void hLineOn(const CalendarSurface& s, int x, int y, int w, uint16_t color) {
+    s.g->drawFastHLine(x, y - s.dy, w, color);
+}
+
+void vLineOn(const CalendarSurface& s, int x, int y, int h, uint16_t color) {
+    s.g->drawFastVLine(x, y - s.dy, h, color);
+}
+
+void circleOn(const CalendarSurface& s, int x, int y, int r, uint16_t color) {
+    s.g->fillCircle(x, y - s.dy, r, color);
+}
+
+void inkTextOn(const CalendarSurface& s, const char* text, int inkX, int y, const GFXfont* font, uint16_t color) {
+    s.g->setFreeFont(font);
+    s.g->setTextSize(1);
+    s.g->setTextColor(color);
+    s.g->drawString(text, inkX - Widgets::ink(text, font, 1).left, y - s.dy);
+}
+
+void inkTextCenteredOn(const CalendarSurface& s, const char* text, int centerX, int y, const GFXfont* font,
+                       uint16_t color) {
+    inkTextOn(s, text, centerX - Widgets::inkWidth(text, font, 1) / 2, y, font, color);
+}
 
 void fitInk(const char* s, int maxInk, const GFXfont* font, char* out, size_t size) {
     if (Widgets::inkWidth(s, font, 1) <= maxInk) {
@@ -44,9 +92,10 @@ int columnX(int column, int columns) {
 CalendarDayScreen::CalendarDayScreen(const DeviceStatus& status, const Agenda& agenda, uint8_t startHour)
     : _status(status),
       _agenda(agenda),
-      _startHour(startHour),
+      _presetStart(startHour * 60),
       _windowStart(startHour * 60),
-      _windowEnd((startHour + CalendarDay::windowHours) * 60) {}
+      _windowEnd((startHour + CalendarDay::windowHours) * 60),
+      _targetStart(startHour * 60) {}
 
 uint8_t CalendarDayScreen::windowFor(uint16_t minuteOfDay) {
     return minuteOfDay >= CalendarDay::afternoonStartHour * 60 &&
@@ -56,12 +105,28 @@ uint8_t CalendarDayScreen::windowFor(uint16_t minuteOfDay) {
 }
 
 void CalendarDayScreen::init() {
+    _targetStart = _presetStart;
     _full = true;
 }
 
 void CalendarDayScreen::update() {}
 
-void CalendarDayScreen::handleInput(Input input) {}
+void CalendarDayScreen::handleInput(Input input) {
+    int step = 0;
+    if (input == Input::FocusNext) step = CalendarDay::scrollStepMinutes;
+    if (input == Input::FocusPrev) step = -(int)CalendarDay::scrollStepMinutes;
+    if (step == 0) return;
+
+    int next = (int)_targetStart + step;
+    if (next < 0) next = 0;
+    if (next > CalendarDay::maxStartMinute) next = CalendarDay::maxStartMinute;
+    _targetStart = next;
+}
+
+void CalendarDayScreen::applyWindow(uint16_t start) {
+    _windowStart = start;
+    _windowEnd = start + CalendarDay::windowHours * 60;
+}
 
 int CalendarDayScreen::yOfMinute(uint16_t minute) const {
     return gridTop + ((int)(minute - _windowStart) * hourStep + 30) / 60;
@@ -71,6 +136,19 @@ bool CalendarDayScreen::inWindow(uint16_t minute) const {
     return minute >= _windowStart && minute < _windowEnd;
 }
 
+int CalendarDayScreen::firstLineMinute() const {
+    return (_windowStart + 59) / 60 * 60;
+}
+
+int CalendarDayScreen::lineCount() const {
+    int first = firstLineMinute();
+    return first > _windowEnd ? 0 : (_windowEnd - first) / 60 + 1;
+}
+
+int CalendarDayScreen::lineY(int index) const {
+    return yOfMinute(firstLineMinute() + index * 60);
+}
+
 bool CalendarDayScreen::overlapsPaint(int x0, int y0, int x1, int y1) const {
     return x0 < _paintX + _paintW && x1 > _paintX && y0 < _paintY + _paintH && y1 > _paintY;
 }
@@ -78,8 +156,9 @@ bool CalendarDayScreen::overlapsPaint(int x0, int y0, int x1, int y1) const {
 uint8_t CalendarDayScreen::hiddenMaskFor(int nowY) const {
     uint8_t mask = 0;
     if (nowY < 0) return mask;
-    for (int i = 0; i < lineCount; i++) {
-        int d = gridTop + i * hourStep - nowY;
+    int lines = lineCount();
+    for (int i = 0; i < lines; i++) {
+        int d = lineY(i) - nowY;
         if (d <= labelHideRange && d >= -labelHideRange) mask |= 1 << i;
     }
     return mask;
@@ -161,17 +240,28 @@ void CalendarDayScreen::draw() {
         return;
     }
     drawHeader();
+    if (_targetStart != _windowStart) {
+        scrollRedraw(now);
+        return;
+    }
     updateLive(now);
 }
 
 void CalendarDayScreen::fullRedraw(uint16_t now) {
-    tft.fillScreen(Theme::background);
+    applyWindow(_targetStart);
     _headerKey = -1;
     buildLayout(now);
     setNow(now);
     drawHeader();
-    paintRect(0, headerRuleY + 1, 320, 240 - headerRuleY - 1);
+    repaintRows(headerRuleY + 1, screenHeight);
     _full = false;
+}
+
+void CalendarDayScreen::scrollRedraw(uint16_t now) {
+    applyWindow(_targetStart);
+    buildLayout(now);
+    setNow(now);
+    repaintRows(headerRuleY + 1, screenHeight);
 }
 
 void CalendarDayScreen::updateLive(uint16_t now) {
@@ -181,16 +271,20 @@ void CalendarDayScreen::updateLive(uint16_t now) {
         uint8_t oldHidden = _hiddenLabels;
         setNow(now);
 
-        if (oldY != _nowY) {
-            if (oldY >= 0) paintLineBand(oldY);
-            if (_nowY >= 0) paintLineBand(_nowY);
+        int low = screenHeight, high = 0;
+        if (oldY >= 0) {
+            low = oldY - 7;
+            high = oldY + 8;
         }
-        if (oldY >= 0) paintLabelBand(oldY);
-        if (_nowY >= 0) paintLabelBand(_nowY);
+        if (_nowY >= 0) {
+            if (_nowY - 7 < low) low = _nowY - 7;
+            if (_nowY + 8 > high) high = _nowY + 8;
+        }
+        if (high > low) repaintRows(low, high);
 
         uint8_t changed = oldHidden ^ _hiddenLabels;
-        for (int i = 0; i < lineCount; i++) {
-            if (changed & (1 << i)) paintLabelBand(gridTop + i * hourStep);
+        for (int i = 0; i < lineCount(); i++) {
+            if (changed & (1 << i)) repaintRows(lineY(i) - 7, lineY(i) + 8);
         }
     }
 
@@ -199,16 +293,48 @@ void CalendarDayScreen::updateLive(uint16_t now) {
         EventState state = _agenda.stateOf(b.event, now);
         if (state == b.state) continue;
         b.state = state;
-        paintRect(b.x, b.top, b.width, b.bottom - b.top);
+        repaintRows(b.top, b.bottom);
     }
 }
 
-void CalendarDayScreen::paintLineBand(int y) {
-    paintRect(0, y - 4, 320, 9);
+void CalendarDayScreen::repaintRows(int y0, int y1) {
+    if (y0 < headerRuleY + 1) y0 = headerRuleY + 1;
+    if (y1 > screenHeight) y1 = screenHeight;
+    for (int top = y0; top < y1; top += bandHeight) {
+        int rows = y1 - top < bandHeight ? y1 - top : bandHeight;
+        paintBand(top, rows);
+    }
 }
 
-void CalendarDayScreen::paintLabelBand(int y) {
-    paintRect(0, y - 7, labelColumn, 15);
+void CalendarDayScreen::paintBand(int top, int rows) {
+    _paintX = 0;
+    _paintY = top;
+    _paintW = 320;
+    _paintH = rows;
+
+    TFT_eSprite* sprite = bandSprite();
+    if (sprite) {
+        sprite->fillSprite(Theme::background);
+        CalendarSurface surface = {sprite, top};
+        compose(surface);
+        sprite->pushSprite(0, top, 0, 0, 320, rows);
+        return;
+    }
+
+    tft.setViewport(0, top, 320, rows, false);
+    tft.fillRect(0, top, 320, rows, Theme::background);
+    CalendarSurface surface = {&tft, 0};
+    compose(surface);
+    tft.resetViewport();
+}
+
+void CalendarDayScreen::compose(const CalendarSurface& surface) {
+    drawGrid(surface);
+    for (uint8_t i = 0; i < _blockCount; i++) {
+        const Block& b = _blocks[i];
+        if (overlapsPaint(b.x, b.top, b.x + b.width, b.bottom)) drawBlock(surface, b);
+    }
+    drawNowLine(surface);
 }
 
 void CalendarDayScreen::drawHeader() {
@@ -233,40 +359,25 @@ void CalendarDayScreen::drawHeader() {
     tft.drawFastHLine(0, headerRuleY, 320, Theme::outline);
 }
 
-void CalendarDayScreen::paintRect(int x, int y, int w, int h) {
-    _paintX = x;
-    _paintY = y;
-    _paintW = w;
-    _paintH = h;
-
-    tft.setViewport(x, y, w, h, false);
-    tft.fillRect(x, y, w, h, Theme::background);
-    drawGrid();
-    for (uint8_t i = 0; i < _blockCount; i++) {
-        const Block& b = _blocks[i];
-        if (overlapsPaint(b.x, b.top, b.x + b.width, b.bottom)) drawBlock(b);
-    }
-    drawNowLine(_status.minuteOfDay());
-    tft.resetViewport();
-}
-
-void CalendarDayScreen::drawGrid() {
-    tft.drawFastVLine(labelColumn, headerRuleY + 1, 240 - (headerRuleY + 1), Theme::gridLine);
+void CalendarDayScreen::drawGrid(const CalendarSurface& surface) {
+    vLineOn(surface, labelColumn, headerRuleY + 1, screenHeight - (headerRuleY + 1), Theme::gridLine);
     int labelOffset = Fonts::capCentre(Fonts::title, 1, 'N');
-    for (int i = 0; i < lineCount; i++) {
-        int y = gridTop + i * hourStep;
+    int firstHour = firstLineMinute() / 60;
+    int lines = lineCount();
+    for (int i = 0; i < lines; i++) {
+        int y = lineY(i);
         if (overlapsPaint(labelColumn + 1, y, 320, y + 1)) {
-            tft.drawFastHLine(labelColumn + 1, y, 320 - labelColumn - 1, Theme::gridLine);
+            hLineOn(surface, labelColumn + 1, y, 320 - labelColumn - 1, Theme::gridLine);
         }
         if (!(_hiddenLabels & (1 << i)) && overlapsPaint(0, y - 7, labelColumn, y + 8)) {
             char label[4];
-            snprintf(label, sizeof(label), "%02u", (unsigned)(_startHour + i));
-            Widgets::inkTextCentered(label, labelCentre, y - labelOffset, Fonts::title, 1, Theme::textMuted);
+            snprintf(label, sizeof(label), "%02u", (unsigned)((firstHour + i) % 24));
+            inkTextCenteredOn(surface, label, labelCentre, y - labelOffset, Fonts::title, Theme::textMuted);
         }
     }
 }
 
-void CalendarDayScreen::drawBlock(const Block& b) {
+void CalendarDayScreen::drawBlock(const CalendarSurface& surface, const Block& b) {
     uint16_t fill, bar, titleColor, timeColor;
     switch (b.state) {
         case EventState::Now:
@@ -292,8 +403,8 @@ void CalendarDayScreen::drawBlock(const Block& b) {
     int cardTop = b.top + 1;
     int cardH = b.bottom - b.top - 1;
     if (cardH < 1) cardH = 1;
-    tft.fillRect(b.x, cardTop, b.width, cardH, fill);
-    tft.fillRect(b.x, cardTop, accentBar, cardH, bar);
+    fillOn(surface, b.x, cardTop, b.width, cardH, fill);
+    fillOn(surface, b.x, cardTop, accentBar, cardH, bar);
     if (cardH < textMinCard) return;
 
     const AgendaEvent& event = _agenda.at(b.event);
@@ -304,32 +415,32 @@ void CalendarDayScreen::drawBlock(const Block& b) {
 
     if (cardH >= fullMinCard) {
         int titleY = cardTop + fullTitleTop - Fonts::rows(Fonts::body, 'H').top;
-        Widgets::inkText(title, textX, titleY, Fonts::body, 1, titleColor);
+        inkTextOn(surface, title, textX, titleY, Fonts::body, titleColor);
 
         char range[20], fitted[20];
         snprintf(range, sizeof(range), "%02u:%02u - %02u:%02u", event.startMinute / 60, event.startMinute % 60,
                  event.endMinute / 60, event.endMinute % 60);
         fitInk(range, maxInk, Fonts::title, fitted, sizeof(fitted));
         int timeY = cardTop + fullTimeTop - Fonts::rows(Fonts::title, '0').top;
-        Widgets::inkText(fitted, textX, timeY, Fonts::title, 1, timeColor);
+        inkTextOn(surface, fitted, textX, timeY, Fonts::title, timeColor);
     } else {
         int inkTop = Fonts::rows(Fonts::body, 'H').top;
         int inkBox = Fonts::rows(Fonts::body, 'g').bottom - inkTop;
         int titleY = cardTop + (cardH - inkBox) / 2 - inkTop;
-        Widgets::inkText(title, textX, titleY, Fonts::body, 1, titleColor);
+        inkTextOn(surface, title, textX, titleY, Fonts::body, titleColor);
     }
 }
 
-void CalendarDayScreen::drawNowLine(uint16_t now) {
+void CalendarDayScreen::drawNowLine(const CalendarSurface& surface) {
     if (_nowY < 0) return;
     if (overlapsPaint(0, _nowY - 4, 320, _nowY + 5)) {
-        tft.fillRect(labelColumn + 1, _nowY - 1, 320 - labelColumn - 1, 3, Theme::alert);
-        tft.fillCircle(labelColumn, _nowY, nowDotRadius, Theme::alert);
+        fillOn(surface, labelColumn + 1, _nowY - 1, 320 - labelColumn - 1, 3, Theme::alert);
+        circleOn(surface, labelColumn, _nowY, nowDotRadius, Theme::alert);
     }
     if (overlapsPaint(0, _nowY - 7, labelColumn, _nowY + 8)) {
         char label[8];
-        snprintf(label, sizeof(label), "%02u:%02u", now / 60, now % 60);
-        Widgets::inkTextCentered(label, labelCentre, _nowY - Fonts::capCentre(Fonts::title, 1, 'N'), Fonts::title, 1,
-                                 Theme::alert);
+        snprintf(label, sizeof(label), "%02u:%02u", (unsigned)(_nowKey / 60), (unsigned)(_nowKey % 60));
+        inkTextCenteredOn(surface, label, labelCentre, _nowY - Fonts::capCentre(Fonts::title, 1, 'N'), Fonts::title,
+                          Theme::alert);
     }
 }

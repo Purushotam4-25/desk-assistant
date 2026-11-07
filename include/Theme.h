@@ -22,6 +22,7 @@ constexpr uint16_t barPast    = rgb565(96, 100, 112);
 constexpr uint16_t good       = rgb565(40, 235, 90);
 constexpr uint16_t alert      = rgb565(255, 36, 36);
 constexpr uint16_t plug       = rgb565(180, 184, 196);
+constexpr uint16_t warn       = rgb565(255, 232, 0);
 
 constexpr uint16_t sun        = rgb565(255, 232, 0);
 constexpr uint16_t cloud      = rgb565(215, 225, 240);
