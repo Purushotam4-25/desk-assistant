@@ -1,6 +1,6 @@
 # ESP32 Desk Assistant
 
-A modular desk companion built on an ESP32. A 2.8" TFT shows a page-based UI driven by a single rotary encoder, with an RTC for time, a DHT11 for room temperature and humidity, and an SD card holding fonts and assets.
+A modular desk companion built on an ESP32. A 2.8" TFT shows a page-based UI driven by a single rotary encoder, with an RTC for time (kept right over WiFi with NTP), a DHT11 for room temperature and humidity, and an SD card holding settings and, later, assets.
 
 Built with PlatformIO and the Arduino framework. This is a learning project, so the code is split into small managers rather than one sketch.
 
@@ -9,11 +9,13 @@ Built with PlatformIO and the Arduino framework. This is a learning project, so 
 | Part | Model | Notes |
 |------|-------|-------|
 | Microcontroller | ESP32 DevKit (`esp32doit-devkit-v1`) | 3.3V logic only |
-| Display | 2.8" SPI TFT, 320x240, landscape | Native-landscape panel, so `platformio.ini` uses `ILI9342_DRIVER` and `setRotation(0)`. MISO not connected |
+| Display | 2.8" SPI TFT, 320x240, landscape | Native-landscape panel, so `platformio.ini` uses `ILI9342_DRIVER` and `setRotation(2)`. MISO not connected |
 | Input | Rotary encoder with push button | Rotate, click, double click, long press |
-| Storage | HW-203 SD card module | Fonts and assets |
+| Input | Two side push buttons | Previous / next sub-page; touch pads are planned |
+| Storage | HW-203 SD card module | Settings and WiFi credentials, assets later |
 | Clock | DS1302 RTC | CR2032 backup battery |
 | Sensor | DHT11 | Temperature and humidity |
+| Network | ESP32 built-in WiFi | 2.4 GHz networks only |
 
 All grounds are shared. The ESP32 runs on USB or VIN (5V). The SD module's VCC goes to 5V (its onboard regulator needs the headroom; on 3.3V the card gets only about 2V and fails intermittently). Everything else sits on 3.3V.
 
@@ -39,46 +41,52 @@ All grounds are shared. The ESP32 runs on USB or VIN (5V). The SD module's VCC g
 | | DAT | 26 |
 | | RST | 25 |
 | DHT11 | DATA | 4 |
+| Side buttons | Left | 21 |
+| | Right | 22 |
 
-The TFT pins are set in `platformio.ini` build flags, so there is no `User_Setup.h` to edit. The wiring may be redone, so treat this table as current-build only.
+The side buttons wire between the pin and GND (internal pull-ups). The TFT pins are set in `platformio.ini` build flags, so there is no `User_Setup.h` to edit. The wiring may be redone, so treat this table as current-build only.
 
 ## Controls
 
 | Action | Result |
 |--------|--------|
-| Rotate | Scroll or change selection |
-| Click | Select / enter |
-| Double click | Back to home |
-| Long press | Open settings / global menu |
+| Rotate | Move focus to the next / previous item |
+| Click | Press the focused item |
+| Double click | Open the Screens menu |
+| Long press | Go Home |
+| Left / right side button | Previous / next sub-page |
 
 ## Software
 
 ```
 src/
-  main.cpp             setup and main loop
-  ScreenManager.cpp    routes encoder input to the active screen
-  MainScreen.cpp       Main page: clock, room climate, next event
-  TodayScreen.cpp      Today page: agenda
-  Widgets.cpp          shared drawing: status bar, icons, cards, text helpers
-  Fonts.cpp            the three GFX fonts, defined once
-  StatusService.cpp    reads RTC, DHT11 and WiFi into one DeviceStatus
-  Agenda.cpp           event list; done / now / upcoming are computed from the time
-  rot_encoder.cpp      encoder + button abstraction
-  RTCManager.cpp       time and date
-  DHTManager.cpp       temperature and humidity
-  SDManager.cpp        SD card, JSON read and crash-safe write
-  ConfigService.cpp    settings from the SD config files, saved copy in NVS, write-back
+  main.cpp              builds everything, setup and main loop
+  ScreenManager.cpp     holds the active screen; handles Home, Menu, sub-pages and detail views
+  InputRouter.cpp       turns the encoder and the side buttons into one input stream
+  *Screen.cpp           the pages: Main, Today, Focus, Weather (4), World clock, Timer, Pomodoro,
+                        Music (3), Quick menu, plus the Screens menu
+  Widgets.cpp, Icons.cpp  shared drawing: status bar, icons, cards, buttons, scroll bar, ink-based text
+  Fonts.cpp             the three GFX fonts and their glyph metrics
+  StatusService.cpp     reads RTC, DHT11 and WiFi into one DeviceStatus
+  ConfigService.cpp     settings from the SD config files, saved copy in NVS, write-back
+  WifiService.cpp       non-blocking WiFi connect and reconnect
+  TimeSync.cpp          NTP into the RTC
+  FocusSession, TimerService, MusicPlayer
+                        background services that keep running when you leave a page
+  Agenda, SunCalc, WorldMap  event list, sunrise / sunset maths, the dot-matrix world map
+  RTCManager, DHTManager, SDManager, rot_encoder, TapButton
+                        hardware drivers
 include/
-  Theme.h              every colour, in one place
-  screens.h            Screen interface and RotaryInput events
-  fonts/               GFX font headers
+  Theme.h               every colour, in one place
+  screens.h             Screen interface and Input events
+  fonts/                GFX font headers
 ```
 
 Screens never talk to the drivers. `StatusService` polls them on a timer and fills a `DeviceStatus`, and each screen is given a read-only reference to it. Screens only redraw the part of the display whose data changed, so the clock digits update once a minute and the colon blinks without redrawing the whole screen.
 
 The `Agenda` currently holds sample events in `main.cpp`. Swap that for a real source (SD file, calendar over WiFi) and the Main and Today pages follow.
 
-Every page implements the `Screen` interface (`init`, `update`, `draw`, `handleInput`). `ScreenManager` holds the active screen, turns encoder events into `RotaryInput` values, and forwards them.
+Every page implements the `Screen` interface (`init`, `update`, `draw`, `handleInput`). `ScreenManager` holds the active screen and forwards the `Input` values that `InputRouter` produces. Pages that need data from a service (focus sessions, timers, music, settings) read it through a reference and change it only through that service.
 
 One rule: no `delay()` in the running code. Everything is timed with `millis()` so input and drawing never block each other.
 
@@ -100,7 +108,7 @@ The screens are mocked up in [Lopaka](https://lopaka.app) (`tft-espi`, 320x240) 
 ## SD card layout
 
 ```
-/config.json    settings (home UTC offset, location, 12/24 hour clock)
+/config.json    settings (home UTC offset, location, 12/24 hour clock, NTP on/off)
 /secrets.json   WiFi name and password
 ```
 
@@ -127,8 +135,12 @@ pio run -t upload
 pio device monitor
 ```
 
-Upload is set to `COM4` in `platformio.ini`; change it to match your board. A second environment, `esp32dev_test_display`, builds only `test/display_test.cpp` for checking the screen on its own.
+Upload is set to `COM4` in `platformio.ini`; change it to match your board. The firmware uses the `huge_app.csv` partition table (one 3 MB app slot, no over-the-air updates) because the WiFi stack alone takes about 600 KB; the first upload after changing the table rewrites it. There are also small hardware test environments (`colortest`, `palettetest`, `paneltest`, `sdtest`); their sources live in `test/`, which is not fully tracked, so they may not build from a fresh clone.
 
 ## Status
 
-Drivers for the display, encoder, RTC, DHT11, SD card and WiFi work. The Main page shows the real RTC clock, date, room temperature and humidity, a day-progress bar and the next event; the Today page shows the agenda. The Screens menu, sub-pages and side buttons move between pages. Built pages: Main, Today, Focus and Focus stats, Weather (Now, Forecast, Rooms, Air), World clock, Timer and Pomodoro, Music (Now playing, Album tracks, Lyrics), and the Quick menu. Much of the data is sample data (agenda events, weather, focus history, and an invented album on a simulated music player, since there is no audio hardware or music source yet). Still to do: WiFi connection and NTP, real calendar and weather sources, a music source, and the Calendar, Quick menu, Pet and Settings pages.
+Everything runs on the real board except the newest pages, which are compiled but not yet checked on it. Drivers for the display, encoder, side buttons, RTC, DHT11, SD card and WiFi work. The device connects to WiFi in the background, sets the clock from NTP, and loads its settings from the SD card (falling back to its own saved copy with no card).
+
+Built pages: Main (clock, date, day bar, room climate, next event) with Today, Focus and the Quick menu as sub-pages; Focus stats; Weather (Now, Forecast, Rooms, Air); World clock; Timer and Pomodoro; Music (Now playing, Album tracks, Lyrics); and the Screens menu. Much of the data is sample data: agenda events, weather, focus history, and an invented album on a simulated music player (there is no audio hardware or music source yet). The Quick menu's Wi-Fi, Night and Brightness buttons only change on-screen state.
+
+Still to do: a real calendar and weather source, a music source, brightness control (needs a transistor on the backlight), and the Calendar, Pet and Settings pages.

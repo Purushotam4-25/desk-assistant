@@ -8,6 +8,7 @@ struct Config {
     float latitude = 19.08f;
     float longitude = 72.88f;
     bool use24Hour = false;
+    bool ntp = true;
     char wifiSsid[33] = "";
     char wifiPassword[64] = "";
 };

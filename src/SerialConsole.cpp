@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 
-SerialConsole::SerialConsole(RTCManager& rtc) : _rtc(rtc) {}
+SerialConsole::SerialConsole(RTCManager& rtc, const WifiService& wifi) : _rtc(rtc), _wifi(wifi) {}
 
 void SerialConsole::update() {
     while (Serial.available()) {
@@ -33,7 +33,13 @@ void SerialConsole::run(const char* line) {
         } else {
             Serial.println("Out of range");
         }
+    } else if (strcmp(line, "wifi") == 0) {
+        Serial.printf("WiFi: %s", _wifi.stateName());
+        if (_wifi.connected()) {
+            Serial.printf(", IP %s, signal %d dBm", WiFi.localIP().toString().c_str(), WiFi.RSSI());
+        }
+        Serial.println();
     } else {
-        Serial.println("Commands: time | time YYYY-MM-DD HH:MM:SS");
+        Serial.println("Commands: time | time YYYY-MM-DD HH:MM:SS | wifi");
     }
 }

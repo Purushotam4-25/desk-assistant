@@ -46,6 +46,7 @@ void ConfigService::loadMirror() {
     _config.latitude = _prefs.getFloat("lat", _config.latitude);
     _config.longitude = _prefs.getFloat("lon", _config.longitude);
     _config.use24Hour = _prefs.getBool("use24h", _config.use24Hour);
+    _config.ntp = _prefs.getBool("ntp", _config.ntp);
     _prefs.getString("wssid", _config.wifiSsid, sizeof(_config.wifiSsid));
     _prefs.getString("wpass", _config.wifiPassword, sizeof(_config.wifiPassword));
 }
@@ -64,6 +65,9 @@ void ConfigService::applyFile() {
     }
     if (!(_pending & (1u << Use24Hour)) && root["use24Hour"].is<bool>()) {
         _config.use24Hour = root["use24Hour"];
+    }
+    if (root["ntp"].is<bool>()) {
+        _config.ntp = root["ntp"];
     }
 }
 
@@ -89,6 +93,7 @@ void ConfigService::writeMirror() {
     _prefs.putFloat("lat", _config.latitude);
     _prefs.putFloat("lon", _config.longitude);
     _prefs.putBool("use24h", _config.use24Hour);
+    _prefs.putBool("ntp", _config.ntp);
     _prefs.putString("wssid", _config.wifiSsid);
     _prefs.putString("wpass", _config.wifiPassword);
     _prefs.putUInt("pend", _pending);
@@ -100,6 +105,7 @@ void ConfigService::fillDocument() {
     _doc["latitude"] = _config.latitude;
     _doc["longitude"] = _config.longitude;
     _doc["use24Hour"] = _config.use24Hour;
+    _doc["ntp"] = _config.ntp;
 }
 
 void ConfigService::setUse24Hour(bool value) {

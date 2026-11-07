@@ -7,6 +7,8 @@
 #include <TFT_eSPI.h>
 #include "SDManager.h"
 #include "ConfigService.h"
+#include "WifiService.h"
+#include "TimeSync.h"
 #include "DHTManager.h"
 #include "RTCManager.h"
 #include "rot_encoder.h"
@@ -113,11 +115,13 @@ WeatherData sampleWeather() {
 TFT_eSPI tft = TFT_eSPI();
 SDManager sdManager(5);
 ConfigService configService;
+WifiService wifi;
 RotaryEncoderManager encoder(32, 33, 15);
 RTCManager rtc(27, 26, 25);
 DHTManager dhtSensor(4);
 StatusService statusService(rtc, dhtSensor);
-SerialConsole console(rtc);
+SerialConsole console(rtc, wifi);
+TimeSync timeSync(rtc, configService, wifi);
 Agenda agenda(sampleEvents, sizeof(sampleEvents) / sizeof(sampleEvents[0]));
 TapButton leftButton(21, true);
 TapButton rightButton(22, true);
@@ -185,11 +189,14 @@ void setup() {
     tft.setRotation(2);
 
     screens.begin();
+    wifi.begin(configService.config());
 }
 
 void loop() {
     console.update();
     configService.update();
+    wifi.update();
+    timeSync.update();
     statusService.update();
     focusSession.update();
     timerService.update();
