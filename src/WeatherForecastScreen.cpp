@@ -10,7 +10,7 @@ extern TFT_eSPI tft;
 namespace {
 constexpr int cardsY = 52, cardW = 96, cardH = 118, firstX = 8, stepX = 104;
 constexpr int iconOffsetX = 20, iconOffsetY = 34, iconSize = 56;
-constexpr int rangeOffsetY = 96, rangeGap = 16;
+constexpr int rangeOffsetY = 96, rangeGap = 16, dashesOffsetY = 46;
 }
 
 WeatherForecastScreen::WeatherForecastScreen(const WeatherData& weather, const DeviceStatus& status, const NavState& nav)
@@ -37,6 +37,11 @@ void WeatherForecastScreen::drawDay(int slot) {
 
     int nameWidth = Widgets::textWidth(name, Fonts::title, 2);
     Widgets::text(name, x + (cardW - nameWidth) / 2, cardsY + 2, Fonts::title, 2, Theme::textMuted);
+
+    if (!_weather.valid) {
+        Widgets::inkTextCentered("--", x + cardW / 2, cardsY + dashesOffsetY, Fonts::body, 2, Theme::textDim);
+        return;
+    }
 
     WeatherUi::icon(day.condition, true, x + iconOffsetX, cardsY + iconOffsetY, iconSize, Theme::surface);
 

@@ -55,19 +55,27 @@ void WeatherAirScreen::drawRegions() {
     tft.fillRect(panelX + 8, bottomValueDigitTop - 4, panelW - 16, bandHeight, Theme::surface);
 
     char humidity[8], uv[8], rain[8];
-    snprintf(humidity, sizeof(humidity), "%u%%", _weather.humidity);
-    if (_weather.isDay) {
+    bool known = _weather.valid;
+    bool showUv = known && _weather.isDay;
+    if (known) {
+        snprintf(humidity, sizeof(humidity), "%u%%", _weather.humidity);
+        snprintf(rain, sizeof(rain), "%u%%", _weather.rainPercent);
+    } else {
+        strlcpy(humidity, "--", sizeof(humidity));
+        strlcpy(rain, "--", sizeof(rain));
+    }
+    if (showUv) {
         snprintf(uv, sizeof(uv), "%u", _weather.uvIndex);
     } else {
-        snprintf(uv, sizeof(uv), "--");
+        strlcpy(uv, "--", sizeof(uv));
     }
-    snprintf(rain, sizeof(rain), "%u%%", _weather.rainPercent);
+    uint16_t valueColor = known ? Theme::text : Theme::textDim;
 
     int valueY = yFor(valueDigitTop, valueScale);
     Widgets::inkTextCentered(humidity, labelCenter(humidityLabel, humidityLabelX), valueY, Fonts::body, valueScale,
-                             Theme::text);
+                             valueColor);
     Widgets::inkTextCentered(uv, labelCenter(uvLabel, uvLabelX), valueY, Fonts::body, valueScale,
-                             _weather.isDay ? WeatherUi::uvColor(_weather.uvLevel()) : Theme::textMuted);
+                             showUv ? WeatherUi::uvColor(_weather.uvLevel()) : (known ? Theme::textMuted : Theme::textDim));
     Widgets::inkTextCentered(rain, centerX, yFor(bottomValueDigitTop, valueScale), Fonts::body, valueScale,
-                             Theme::text);
+                             valueColor);
 }

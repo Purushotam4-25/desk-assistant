@@ -98,25 +98,6 @@ const AgendaEvent sampleEvents[] = {
 
 const uint16_t sampleWeekMinutes[FocusSession::weekDays] = {95, 140, 60, 110, 85, 30, 45};
 
-WeatherData sampleWeather() {
-    WeatherData w;
-    w.revision = 1;
-    w.condition = WeatherCondition::MostlyClear;
-    w.temperatureC = 18;
-    w.hi = 23;
-    w.lo = 14;
-    strlcpy(w.summary, "Mostly clear", sizeof(w.summary));
-    w.forecast[0] = {WeatherCondition::Clear, 14, 24};
-    w.forecast[1] = {WeatherCondition::Cloudy, 13, 20};
-    w.forecast[2] = {WeatherCondition::Rain, 11, 17};
-    w.outdoorTemperatureC = 17;
-    w.outdoorHumidity = 62;
-    w.humidity = 62;
-    w.uvIndex = 5;
-    w.rainPercent = 10;
-    return w;
-}
-
 TFT_eSPI tft = TFT_eSPI();
 SDManager sdManager(5);
 ConfigService configService;
@@ -141,7 +122,7 @@ FocusScreen focusScreen(statusService.status(), focusSession, nav, focusStatsScr
 QuickSettings quickSettings;
 QuickMenuScreen quickMenuScreen(statusService.status(), nav, quickSettings);
 
-WeatherData weather = sampleWeather();
+WeatherData weather;
 WeatherService weatherService(configService, wifi);
 WeatherNowScreen weatherNowScreen(weather, nav);
 WeatherForecastScreen weatherForecastScreen(weather, statusService.status(), nav);
@@ -207,7 +188,9 @@ Screen* const timerSubPages[] = {&timerScreen, &pomodoroScreen};
 Screen* const musicSubPages[] = {&musicNowScreen, &musicTracksScreen};
 Screen* const settingsSubPages[] = {&settingsScreen};
 uint8_t calendarEntry() {
-    return CalendarDayScreen::windowFor(statusService.status().minuteOfDay());
+    uint8_t index = CalendarDayScreen::windowFor(statusService.status().minuteOfDay());
+    (index == 0 ? calendarMorning : calendarAfternoon).followNow();
+    return index;
 }
 
 uint8_t settingsEntry() {
@@ -234,6 +217,10 @@ struct AppliedSettings {
     int16_t shortBreak = -1;
     int16_t longBreak = -1;
     int16_t sensorInterval = -1;
+    int16_t timeFormat = -1;
+    int16_t dateFormat = -1;
+    int16_t timerRepeat = -1;
+    int16_t pomoAuto = -1;
     int16_t tempOffset = 0x7FFF;
     int16_t humidityOffset = 0x7FFF;
 } applied;
@@ -269,6 +256,23 @@ void applySettings() {
         timerService.setBreakMinutes(shortBreak, longBreak);
         applied.shortBreak = shortBreak;
         applied.longBreak = longBreak;
+    }
+
+    int16_t timeFormat = configService.value(SettingId::TimeFormat);
+    int16_t dateFormat = configService.value(SettingId::DateFormat);
+    if (timeFormat != applied.timeFormat || dateFormat != applied.dateFormat) {
+        statusService.setFormats(timeFormat, dateFormat);
+        applied.timeFormat = timeFormat;
+        applied.dateFormat = dateFormat;
+    }
+
+    int16_t timerRepeat = configService.value(SettingId::TimerRepeat);
+    int16_t pomoAuto = configService.value(SettingId::PomoAuto);
+    if (timerRepeat != applied.timerRepeat || pomoAuto != applied.pomoAuto) {
+        timerService.setTimerRepeat(timerRepeat);
+        timerService.setPomoAutoStart(pomoAuto);
+        applied.timerRepeat = timerRepeat;
+        applied.pomoAuto = pomoAuto;
     }
 
     int16_t interval = configService.value(SettingId::SensorInterval);

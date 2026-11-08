@@ -15,6 +15,11 @@ void StatusService::setSdOk(bool ok) {
     _status.sdOk = ok;
 }
 
+void StatusService::setFormats(bool use24Hour, uint8_t dateFormat) {
+    _status.use24Hour = use24Hour;
+    _status.dateFormat = dateFormat;
+}
+
 void StatusService::update() {
     uint32_t now = millis();
 

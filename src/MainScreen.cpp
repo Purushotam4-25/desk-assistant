@@ -4,6 +4,7 @@
 #include "Theme.h"
 #include "Fonts.h"
 #include "Widgets.h"
+#include "ClockFormat.h"
 
 extern TFT_eSPI tft;
 
@@ -75,7 +76,8 @@ void MainScreen::drawClock() {
     _clockKey = key;
 
     char hours[3], minutes[3];
-    snprintf(hours, sizeof(hours), "%02u", _status.now.hour);
+    unsigned shownHour = _status.use24Hour ? _status.now.hour : (_status.now.hour % 12 == 0 ? 12 : _status.now.hour % 12);
+    snprintf(hours, sizeof(hours), "%02u", shownHour);
     snprintf(minutes, sizeof(minutes), "%02u", _status.now.minute);
 
     int hoursInk = Widgets::inkWidth(hours, Fonts::body, clockScale);
@@ -108,7 +110,7 @@ void MainScreen::drawDate() {
     _dateKey = key;
 
     char date[12];
-    snprintf(date, sizeof(date), "%02u/%02u/%02u", _status.now.day, _status.now.month, _status.now.year % 100);
+    ClockFormat::date(date, sizeof(date), _status.now, _status.dateFormat);
     const char* day = weekdayNames[_status.now.weekday % 7];
 
     constexpr int gap = 16;
@@ -192,8 +194,7 @@ void MainScreen::drawNextUpCard() {
     if (soon) {
         snprintf(when, sizeof(when), "in %d min", until);
     } else {
-        snprintf(when, sizeof(when), "%02u:%02u - %02u:%02u", event.startMinute / 60, event.startMinute % 60,
-                 event.endMinute / 60, event.endMinute % 60);
+        ClockFormat::range(when, sizeof(when), event.startMinute, event.endMinute, _status.use24Hour);
     }
     boldText(when, textX, nextY + drawYForCentre(Fonts::body, 1, nextWhenCentre), Fonts::body, 1, color);
 }

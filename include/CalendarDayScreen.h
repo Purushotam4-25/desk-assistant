@@ -19,6 +19,7 @@ public:
 
     static uint8_t windowFor(uint16_t minuteOfDay);
 
+    void followNow() { _followNow = true; }
     void init() override;
     void update() override;
     void draw() override;
@@ -49,6 +50,7 @@ private:
     Block _blocks[maxBlocks];
     uint8_t _blockCount = 0;
     bool _full = true;
+    bool _followNow = false;
     int32_t _headerKey = -1;
     int32_t _nowKey = -1;
     int _nowY = -1;

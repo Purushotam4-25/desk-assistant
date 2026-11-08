@@ -8,6 +8,8 @@ struct DeviceStatus {
     bool hasClimate = false;
     float temperatureC = 0;
     float humidity = 0;
+    bool use24Hour = false;
+    uint8_t dateFormat = 0;
 
     uint16_t minuteOfDay() const { return now.hour * 60 + now.minute; }
 };

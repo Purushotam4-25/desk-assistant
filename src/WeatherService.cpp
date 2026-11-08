@@ -97,7 +97,8 @@ void WeatherService::finishFetch(WeatherData& target) {
     if (_resultOk) {
         _result.revision = target.revision;
         _result.isDay = target.isDay;
-        if (!sameData(_result, target)) {
+        _result.valid = true;
+        if (!target.valid || !sameData(_result, target)) {
             target = _result;
             target.revision++;
         }

@@ -12,6 +12,7 @@ struct ForecastDay {
 
 struct WeatherData {
     uint32_t revision = 0;
+    bool valid = false;
     WeatherCondition condition = WeatherCondition::Clear;
     bool isDay = true;
     int8_t temperatureC = 0;

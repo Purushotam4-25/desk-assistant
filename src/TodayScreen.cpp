@@ -3,6 +3,7 @@
 #include "Theme.h"
 #include "Fonts.h"
 #include "Widgets.h"
+#include "ClockFormat.h"
 
 extern TFT_eSPI tft;
 
@@ -85,8 +86,9 @@ void TodayScreen::drawRows() {
 
 void TodayScreen::drawRow(int slot, const AgendaEvent& event, EventState state) {
     int y = rowY + slot * rowStep;
-    char time[8];
-    snprintf(time, sizeof(time), "%02u:%02u", event.startMinute / 60, event.startMinute % 60);
+    char time[10];
+    ClockFormat::timeCompact(time, sizeof(time), event.startMinute, _status.use24Hour);
+    int titleX = rowX + (_status.use24Hour ? 84 : 94);
 
     uint16_t timeColor, titleColor;
     switch (state) {
@@ -106,7 +108,7 @@ void TodayScreen::drawRow(int slot, const AgendaEvent& event, EventState state) 
     }
 
     Widgets::text(time, rowX + 10, y + 6, Fonts::body, 1, timeColor);
-    Widgets::fitText(event.title, rowX + 84, y + 6, 180, Fonts::body, 1, titleColor);
+    Widgets::fitText(event.title, titleX, y + 6, 264 - (titleX - rowX), Fonts::body, 1, titleColor);
 
     if (state == EventState::Done) {
         tft.drawLine(rowX + 282, y + 15, rowX + 286, y + 19, Theme::good);

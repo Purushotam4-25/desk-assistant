@@ -51,6 +51,8 @@ public:
     int shortBreakMinutes() const { return _shortBreakMinutes; }
     int longBreakMinutes() const { return _longBreakMinutes; }
     void setBreakMinutes(int shortMinutes, int longMinutes);
+    void setTimerRepeat(bool repeat) { _timerRepeat = repeat; }
+    void setPomoAutoStart(bool autoStart) { _pomoAutoStart = autoStart; }
     void pomoStart();
     void pomoPause();
     void pomoResume();
@@ -64,6 +66,8 @@ private:
     int _shortBreakMinutes = 5;
     int _longBreakMinutes = 15;
     int _round = 1;
+    bool _timerRepeat = false;
+    bool _pomoAutoStart = true;
     PomoPhase _phase = PomoPhase::Focus;
 
     void advancePomodoro();

@@ -37,6 +37,7 @@ void Countdown::stop() {
 
 void TimerService::update() {
     _timer.update();
+    if (_timerRepeat && _timer.state() == Countdown::State::Done) _timer.start(_timerSetSeconds);
     _pomo.update();
     if (_pomo.state() == Countdown::State::Done) advancePomodoro();
 }
@@ -114,6 +115,7 @@ void TimerService::pomoEnd() {
 }
 
 void TimerService::advancePomodoro() {
+    PomoPhase before = _phase;
     switch (_phase) {
         case PomoPhase::Focus:
             if (_round < rounds) {
@@ -133,4 +135,5 @@ void TimerService::advancePomodoro() {
             pomoEnd();
             break;
     }
+    if (before != PomoPhase::LongBreak && !_pomoAutoStart) _pomo.pause();
 }

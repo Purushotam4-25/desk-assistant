@@ -11,6 +11,7 @@ public:
 
     StatusService(RTCManager& rtc, DHTManager& dht);
     void setSdOk(bool ok);
+    void setFormats(bool use24Hour, uint8_t dateFormat);
     void update();
     const DeviceStatus& status() const { return _status; }
 

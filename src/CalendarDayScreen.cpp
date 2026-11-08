@@ -6,6 +6,7 @@
 #include "Fonts.h"
 #include "Widgets.h"
 #include "DateMath.h"
+#include "ClockFormat.h"
 
 extern TFT_eSPI tft;
 
@@ -18,6 +19,7 @@ namespace {
 constexpr int headerRuleY = 26, headerCentre = 13, sideMargin = 10, screenHeight = 240;
 constexpr int labelColumn = 44, labelCentre = 22;
 constexpr int gridTop = 38, hourStep = 38;
+constexpr int lookBackMinutes = 60;
 constexpr int areaLeft = 48, areaRight = 310;
 constexpr int columnGap = 2, maxColumns = 4;
 constexpr int accentBar = 4, textInset = 10, textPadRight = 6;
@@ -105,7 +107,16 @@ uint8_t CalendarDayScreen::windowFor(uint16_t minuteOfDay) {
 }
 
 void CalendarDayScreen::init() {
-    _targetStart = _presetStart;
+    if (_followNow) {
+        int start = (int)_status.minuteOfDay() - lookBackMinutes;
+        start -= start % CalendarDay::scrollStepMinutes;
+        if (start < 0) start = 0;
+        if (start > CalendarDay::maxStartMinute) start = CalendarDay::maxStartMinute;
+        _targetStart = start;
+        _followNow = false;
+    } else {
+        _targetStart = _presetStart;
+    }
     _full = true;
 }
 
@@ -370,8 +381,8 @@ void CalendarDayScreen::drawGrid(const CalendarSurface& surface) {
             hLineOn(surface, labelColumn + 1, y, 320 - labelColumn - 1, Theme::gridLine);
         }
         if (!(_hiddenLabels & (1 << i)) && overlapsPaint(0, y - 7, labelColumn, y + 8)) {
-            char label[4];
-            snprintf(label, sizeof(label), "%02u", (unsigned)((firstHour + i) % 24));
+            char label[6];
+            ClockFormat::hourLabel(label, sizeof(label), (firstHour + i) % 24, _status.use24Hour);
             inkTextCenteredOn(surface, label, labelCentre, y - labelOffset, Fonts::title, Theme::textMuted);
         }
     }
@@ -418,8 +429,7 @@ void CalendarDayScreen::drawBlock(const CalendarSurface& surface, const Block& b
         inkTextOn(surface, title, textX, titleY, Fonts::body, titleColor);
 
         char range[20], fitted[20];
-        snprintf(range, sizeof(range), "%02u:%02u - %02u:%02u", event.startMinute / 60, event.startMinute % 60,
-                 event.endMinute / 60, event.endMinute % 60);
+        ClockFormat::range(range, sizeof(range), event.startMinute, event.endMinute, _status.use24Hour);
         fitInk(range, maxInk, Fonts::title, fitted, sizeof(fitted));
         int timeY = cardTop + fullTimeTop - Fonts::rows(Fonts::title, '0').top;
         inkTextOn(surface, fitted, textX, timeY, Fonts::title, timeColor);
@@ -439,7 +449,7 @@ void CalendarDayScreen::drawNowLine(const CalendarSurface& surface) {
     }
     if (overlapsPaint(0, _nowY - 7, labelColumn, _nowY + 8)) {
         char label[8];
-        snprintf(label, sizeof(label), "%02u:%02u", (unsigned)(_nowKey / 60), (unsigned)(_nowKey % 60));
+        ClockFormat::time(label, sizeof(label), _nowKey, _status.use24Hour);
         inkTextCenteredOn(surface, label, labelCentre, _nowY - Fonts::capCentre(Fonts::title, 1, 'N'), Fonts::title,
                           Theme::alert);
     }

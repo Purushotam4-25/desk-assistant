@@ -115,6 +115,13 @@ void WeatherRoomsScreen::drawOutdoor() {
 
     tft.fillRect(dividerX + 4, valuesTop, panelRight - dividerX - 8, valuesHeight, Theme::surface);
 
+    if (!_weather.valid) {
+        int dashesX = (dividerX + panelRight) / 2;
+        Widgets::inkTextCentered("--", dashesX, tempTop, Fonts::glcd, maxValueScale, Theme::textDim);
+        Widgets::inkTextCentered("--", dashesX, humidityTop, Fonts::glcd, maxValueScale, Theme::textDim);
+        return;
+    }
+
     char temp[8], humidity[8];
     snprintf(temp, sizeof(temp), "%d", _weather.outdoorTemperatureC);
     snprintf(humidity, sizeof(humidity), "%u%%", _weather.outdoorHumidity);
