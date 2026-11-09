@@ -160,11 +160,13 @@ void MainScreen::drawRoomCard() {
 
 void MainScreen::drawNextUpCard() {
     uint16_t now = _status.minuteOfDay();
-    int next = _agenda.nextUpcoming(now);
+    bool synced = _agenda.synced();
+    int next = synced ? _agenda.nextUpcoming(now) : -1;
     int until = next >= 0 ? _agenda.at(next).startMinute - now : 0;
     bool soon = next >= 0 && until <= soonWithinMinutes;
 
-    int32_t key = next < 0 ? -2 : next * 1000 + (soon ? until : 999);
+    int32_t state = !synced ? -3 : next < 0 ? -2 : next * 1000 + (soon ? until : 999);
+    int32_t key = (int32_t)(_agenda.revision() % 1000) * 100000 + state;
     if (key == _nextKey) return;
     _nextKey = key;
 
@@ -173,12 +175,21 @@ void MainScreen::drawNextUpCard() {
     int textMaxWidth = nextW - nextPadLeft - nextPadRight;
     Widgets::text("Next up", textX, nextY + nextLabelY, Fonts::title, 1, Theme::textMuted);
 
+    if (!synced) {
+        tft.fillRect(nextX, nextY + nextBarTop, 4, nextBarHeight, Theme::textDim);
+        Widgets::text("No calendar", textX, nextY + drawYForCentre(Fonts::title, 2, nextTitleCentre), Fonts::title, 2,
+                      Theme::textMuted);
+        Widgets::text("Not synced yet", textX, nextY + drawYForCentre(Fonts::title, 1, nextWhenCentre), Fonts::title, 1,
+                      Theme::textMuted);
+        return;
+    }
+
     if (next < 0) {
         tft.fillRect(nextX, nextY + nextBarTop, 4, nextBarHeight, Theme::good);
         Widgets::text("All clear", textX, nextY + drawYForCentre(Fonts::title, 2, nextTitleCentre), Fonts::title, 2,
                       Theme::good);
-        Widgets::text("Nothing else today", textX, nextY + drawYForCentre(Fonts::title, 1, nextWhenCentre),
-                      Fonts::title, 1, Theme::textMuted);
+        Widgets::text(_agenda.count() == 0 ? "No events today" : "Nothing else today", textX,
+                      nextY + drawYForCentre(Fonts::title, 1, nextWhenCentre), Fonts::title, 1, Theme::textMuted);
         return;
     }
 

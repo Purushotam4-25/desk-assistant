@@ -177,6 +177,7 @@ uint8_t CalendarDayScreen::hiddenMaskFor(int nowY) const {
 
 void CalendarDayScreen::buildLayout(uint16_t now) {
     _blockCount = 0;
+    _layoutRevision = _agenda.revision();
     size_t count = _agenda.count() < maxBlocks ? _agenda.count() : maxBlocks;
     for (size_t i = 0; i < count; i++) {
         const AgendaEvent& event = _agenda.at(i);
@@ -251,7 +252,7 @@ void CalendarDayScreen::draw() {
         return;
     }
     drawHeader();
-    if (_targetStart != _windowStart) {
+    if (_targetStart != _windowStart || _agenda.revision() != _layoutRevision) {
         scrollRedraw(now);
         return;
     }

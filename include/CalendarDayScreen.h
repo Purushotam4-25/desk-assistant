@@ -49,6 +49,7 @@ private:
     uint16_t _targetStart;
     Block _blocks[maxBlocks];
     uint8_t _blockCount = 0;
+    uint32_t _layoutRevision = 0;
     bool _full = true;
     bool _followNow = false;
     int32_t _headerKey = -1;

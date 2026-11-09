@@ -52,12 +52,16 @@ void TodayScreen::drawStatus() {
 }
 
 void TodayScreen::drawHeader() {
-    int32_t key = _agenda.remaining(_status.minuteOfDay());
+    int32_t key = _agenda.synced() ? _agenda.remaining(_status.minuteOfDay()) : -1;
     if (key == _headerKey) return;
     _headerKey = key;
 
     char info[16];
-    snprintf(info, sizeof(info), "%ld left", (long)key);
+    if (key < 0) {
+        snprintf(info, sizeof(info), "--");
+    } else {
+        snprintf(info, sizeof(info), "%ld left", (long)key);
+    }
     int infoWidth = Widgets::textWidth(info, Fonts::body, 1);
 
     tft.fillRect(0, 28, 320, 32, Theme::background);
@@ -75,10 +79,16 @@ void TodayScreen::drawRows() {
     for (int i = 0; i < shown; i++) {
         key = key * 3 + (int)_agenda.stateOf(start + i, now);
     }
+    key += (int32_t)(_agenda.revision() % 100000) * 3000;
     if (key == _rowsKey) return;
     _rowsKey = key;
 
     tft.fillRect(0, rowY - 2, 320, 240 - (rowY - 2), Theme::background);
+    if (shown <= 0) {
+        Widgets::text(_agenda.synced() ? "No events today" : "Calendar not synced yet", rowX + 4, rowY + 8, Fonts::body, 1,
+                      Theme::textMuted);
+        return;
+    }
     for (int i = 0; i < shown; i++) {
         drawRow(i, _agenda.at(start + i), _agenda.stateOf(start + i, now));
     }

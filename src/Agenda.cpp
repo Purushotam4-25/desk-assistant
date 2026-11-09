@@ -1,4 +1,23 @@
 #include "Agenda.h"
+#include <string.h>
+
+void Agenda::replace(const AgendaEvent* events, size_t count, uint32_t dateKey) {
+    if (count > agendaCapacity) count = agendaCapacity;
+    bool same = _synced && _dateKey == dateKey && _count == count && memcmp(_events, events, count * sizeof(AgendaEvent)) == 0;
+    if (same) return;
+    memcpy(_events, events, count * sizeof(AgendaEvent));
+    _count = count;
+    _synced = true;
+    _dateKey = dateKey;
+    _revision++;
+}
+
+void Agenda::clear() {
+    if (!_synced && _count == 0) return;
+    _count = 0;
+    _synced = false;
+    _revision++;
+}
 
 EventState Agenda::stateOf(size_t i, uint16_t nowMinute) const {
     const AgendaEvent& e = _events[i];

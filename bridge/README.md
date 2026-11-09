@@ -2,7 +2,7 @@
 
 A small service for a home server (a Synology NAS) that does the internet work for the desk assistant. The ESP32 only makes plain HTTP calls on the home network and gets back a tiny JSON, so it needs no TLS and holds no API credentials.
 
-It serves weather from Open-Meteo (no key needed) and the Spotify Music page (now playing, controls, album, lyrics). The calendar is meant to join later.
+It serves weather from Open-Meteo (no key needed), the Spotify Music page (now playing, controls, album, lyrics) and today's Google Calendar events.
 
 ## Endpoints
 
@@ -10,6 +10,7 @@ It serves weather from Open-Meteo (no key needed) and the Spotify Music page (no
 |------|--------|
 | `GET /weather?lat=19.07&lon=72.88` | Current conditions, today's high / low, UV, rain chance and the next three days. Cached for `CACHE_MINUTES` (default 15); if Open-Meteo fails the last good copy is served |
 | `GET /health` | `{"ok":true}` |
+| `GET /calendar/today?off=330` | Today's events from the primary Google Calendar. `off` is the device's UTC offset in minutes (from `config.json`); "today" is the local day in that offset, so the bridge and the device always agree on the date. Returns `{"ok":true,"date":"2026-11-09","n":7,"events":[{"s":510,"e":540,"t":"Standup"}],"age":0}` with `s` and `e` as minutes since local midnight, titles reduced to ASCII and cut to 27 characters, at most 16 events sorted by start (`n` is the real count). Cancelled, all-day and declined events are left out; an event crossing midnight is clipped to the day. Cached 5 minutes; if Google fails the last list for the same day is served with its `age` in seconds, never one from a previous day. Errors come back as HTTP 200 `{"ok":false,"err":"not_linked"\|"rate_limited"\|"upstream"}`; a missing or bad `off` is HTTP 400 |
 | `GET /spotify/now` | What is playing: `playing`, `id`, `title`, `artist`, `albumId`, `album`, `track`, `pos` and `dur` in ms. `{"ok":true,"idle":true}` when a device is active but nothing plays. Cached 2 s |
 | `GET /spotify/album?id=` | Album title, artist, year, total and up to 24 tracks `{id, t, ms}`. Cached 24 h |
 | `GET /spotify/cover?id=<album id>` | The album cover as raw pixels, not JSON: exactly 15,488 bytes, 88 x 88, RGB565, high byte first, `Content-Type: application/octet-stream`. Cropped to a square from the centre, colour-corrected for the panel (see Cover colours), cached for the last 8 albums. `&fmt=png` returns the corrected cover as a PNG, `&fmt=orig` the uncorrected one, `&scale=1..8` enlarges it, for viewing on the PC. On failure it returns JSON `{"ok":false,"err":"no_cover"}` (or another code) with a JSON content type, so the device keeps its placeholder. Without `fmt` a browser shows it as a download or garbage; check the size is 15488 |
@@ -34,12 +35,25 @@ Spotify's rules for new developer apps (2026): the app owner needs Spotify Premi
 1. Open the Spotify developer dashboard (developer.spotify.com/dashboard), create an app, and add this exact redirect URI: `http://127.0.0.1:8888/callback`. Tick the Web API. Copy the Client ID. There is no client secret to use.
 2. On the PC, in this folder, run `python spotify_login.py <client id>`. A browser opens, you approve, and `data/spotify.json` is written. It holds a long-lived refresh token: keep it private (the folder is gitignored).
 3. Copy the `data` folder next to `docker-compose.yml` on the NAS, so the container sees `/app/data/spotify.json`. Optionally put `SPOTIFY_CLIENT_ID=<client id>` in a `.env` file beside `docker-compose.yml` (also gitignored); the id is already stored in `spotify.json`, so this is not required.
-4. Redeploy on the NAS: copy `app.py`, `spotify.py`, `tune_page.py`, `Dockerfile` and `docker-compose.yml` over, then `sudo docker compose up -d --build`. The Dockerfile installs Pillow (for the cover art), so the first rebuild downloads it and takes a little longer; later rebuilds reuse it. Pillow has ready-made packages for x86-64 and 64-bit ARM Synology models; a very old 32-bit ARM model may fail to build.
+4. Redeploy on the NAS: copy `app.py`, `spotify.py`, `gcal.py`, `tune_page.py`, `Dockerfile` and `docker-compose.yml` over, then `sudo docker compose up -d --build`. The Dockerfile installs Pillow (for the cover art), so the first rebuild downloads it and takes a little longer; later rebuilds reuse it. Pillow has ready-made packages for x86-64 and 64-bit ARM Synology models; a very old 32-bit ARM model may fail to build.
 5. On the device, open Spotify on any device (phone, PC), start a song, then open the Music page. Settings > Connections > Spotify shows the status.
 
 The bridge refreshes access tokens itself and keeps a rotated refresh token. If the token is ever revoked, the Music page says "Not connected": repeat step 2 and 3.
 
 Lyrics come from LRCLIB (lrclib.net), a free public service with no key. Not every song has synced lyrics.
+
+## Google Calendar setup (once)
+
+The bridge reads your calendar with the Google Calendar API and a read-only token of its own. Use a separate Google Cloud project for this, so its secret can be revoked without touching anything else.
+
+1. console.cloud.google.com: create a project and enable the **Google Calendar API**.
+2. APIs & Services > OAuth consent screen: user type External, an app name and your email. Then press **Publish app** so the status is "In production". Left in "Testing", Google expires the refresh token after 7 days. An unverified production app is fine for one person: at login click Advanced, then continue.
+3. APIs & Services > Credentials > Create credentials > OAuth client ID > **Desktop app**. Download the JSON.
+4. On the PC, in this folder, run `python gcal_login.py <path to that JSON>` (the file stays where it is and is not copied). A browser opens, you approve read-only calendar access, and `data/google.json` is written. It holds the client id and secret plus the refresh token: keep it private (the folder is gitignored).
+5. Copy `data/google.json` into the data folder next to `docker-compose.yml` on the NAS, copy `gcal.py` and the updated `app.py`, `Dockerfile` over, then `sudo docker compose up -d --build`.
+6. On the device, Settings > Connections > Calendar shows the status; Test now fetches at once.
+
+If the token is ever revoked the Calendar status says "Not linked": repeat steps 4 and 5. `python test_gcal.py` runs the calendar tests against a fake Google on the PC.
 
 ## Cover colours
 

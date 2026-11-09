@@ -24,3 +24,5 @@ bridge/.env
 sd-card/
 bridge/data/
 bridge/__pycache__/
+__pycache__/
+*.pyc

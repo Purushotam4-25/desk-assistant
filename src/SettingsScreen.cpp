@@ -146,7 +146,10 @@ void SettingsScreen::activate(const MenuItem& selected, int index) {
                     break;
                 case ActionId::PhoneSetup: showFeedback("Not built yet"); break;
                 case ActionId::BuzzerTest: showFeedback("No buzzer yet"); break;
-                case ActionId::TestService: showFeedback("Not set up"); break;
+                case ActionId::CalendarTest:
+                    if (_actions.calendarRefresh) _actions.calendarRefresh();
+                    showFeedback("Fetching");
+                    break;
                 case ActionId::WeatherTest:
                     if (_actions.weatherRefresh) _actions.weatherRefresh();
                     showFeedback("Fetching");

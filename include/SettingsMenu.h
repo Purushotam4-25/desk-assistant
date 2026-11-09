@@ -1,5 +1,6 @@
 #pragma once
 #include <stddef.h>
+#include "CalendarService.h"
 #include "ConfigService.h"
 #include "DeviceStatus.h"
 #include "SDManager.h"
@@ -20,11 +21,13 @@ struct SettingsContext {
     SDManager& sd;
     const WeatherService& weather;
     const SpotifyService& spotify;
+    const CalendarService& calendar;
 };
 
 struct SettingsActions {
     void (*weatherRefresh)();
     void (*spotifyRefresh)();
+    void (*calendarRefresh)();
     void (*reboot)();
     void (*wifiReconnect)();
     void (*sensorReinit)();
@@ -32,7 +35,7 @@ struct SettingsActions {
 
 enum class ItemKind : uint8_t { Setting, Submenu, Info, Action };
 enum class ActionId : uint8_t {
-    Reboot, ResetSettings, FactoryReset, WifiReconnect, SensorReinit, PhoneSetup, BuzzerTest, TestService, WeatherTest, SpotifyTest, Relink, RunChecks
+    Reboot, ResetSettings, FactoryReset, WifiReconnect, SensorReinit, PhoneSetup, BuzzerTest, CalendarTest, WeatherTest, SpotifyTest, Relink, RunChecks
 };
 
 using InfoFn = Health (*)(const SettingsContext& ctx, char* out, size_t size);

@@ -266,28 +266,48 @@ Health notBuilt(const SettingsContext&, char* out, size_t size) {
     return Health::Off;
 }
 
-Health notSetUp(const SettingsContext&, char* out, size_t size) {
-    snprintf(out, size, "Not set up");
-    return Health::Off;
-}
-
-Health never(const SettingsContext&, char* out, size_t size) {
-    snprintf(out, size, "never");
+Health calendarStatus(const SettingsContext& ctx, char* out, size_t size) {
+    switch (ctx.calendar.state()) {
+        case CalendarService::State::NoBridge:
+            snprintf(out, size, "No bridge");
+            return Health::Off;
+        case CalendarService::State::WaitingForWifi:
+            snprintf(out, size, "No Wi-Fi");
+            return Health::Warn;
+        case CalendarService::State::Fetching:
+            snprintf(out, size, "Updating");
+            return ctx.calendar.everOk() ? Health::Ok : Health::Warn;
+        case CalendarService::State::Ok:
+            snprintf(out, size, "Live");
+            return Health::Ok;
+        case CalendarService::State::Error:
+            snprintf(out, size, ctx.calendar.everOk() ? "Stale" : "Error");
+            return ctx.calendar.everOk() ? Health::Warn : Health::Error;
+    }
     return Health::None;
 }
 
-Health noneYet(const SettingsContext&, char* out, size_t size) {
-    snprintf(out, size, "none");
+Health calendarLastOk(const SettingsContext& ctx, char* out, size_t size) {
+    if (ctx.calendar.everOk()) {
+        formatAgo(ctx.calendar.lastOkMs(), out, size);
+    } else {
+        snprintf(out, size, "never");
+    }
     return Health::None;
 }
 
-Health notLinked(const SettingsContext&, char* out, size_t size) {
-    snprintf(out, size, "Not linked");
+Health calendarError(const SettingsContext& ctx, char* out, size_t size) {
+    snprintf(out, size, "%s", ctx.calendar.lastError()[0] ? ctx.calendar.lastError() : "none");
     return Health::None;
 }
 
-Health zeroLoaded(const SettingsContext&, char* out, size_t size) {
-    snprintf(out, size, "0 loaded");
+Health calendarEvents(const SettingsContext& ctx, char* out, size_t size) {
+    snprintf(out, size, "%u today", (unsigned)ctx.calendar.eventCount());
+    return Health::None;
+}
+
+Health calendarAccount(const SettingsContext&, char* out, size_t size) {
+    snprintf(out, size, "Google, read-only");
     return Health::None;
 }
 
@@ -592,13 +612,13 @@ constexpr MenuItem weatherItems[] = {
 constexpr Menu weatherMenu = menu("Weather", weatherItems);
 
 constexpr MenuItem calendarItems[] = {
-    info("Status", notSetUp),
-    info("Last OK", never),
-    info("Error", noneYet),
-    action("Test now", ActionId::TestService),
+    info("Status", calendarStatus),
+    info("Last OK", calendarLastOk),
+    info("Error", calendarError),
+    action("Test now", ActionId::CalendarTest),
     setting("Refresh", SettingId::CalendarEvery),
-    info("Events", zeroLoaded),
-    info("Account", notLinked),
+    info("Events", calendarEvents),
+    info("Account", calendarAccount),
 };
 constexpr Menu calendarMenu = menu("Calendar", calendarItems);
 
@@ -622,7 +642,7 @@ constexpr MenuItem connectionItems[] = {
     submenu("Bluetooth", bluetoothMenu, notBuilt),
     submenu("Spotify", spotifyMenu, spotifyStatus),
     submenu("Weather", weatherMenu, weatherStatus),
-    submenu("Calendar", calendarMenu, notSetUp),
+    submenu("Calendar", calendarMenu, calendarStatus),
     submenu("Time sync", syncMenu, syncStatus),
     submenu("Diagnostics", diagnosticsMenu),
 };

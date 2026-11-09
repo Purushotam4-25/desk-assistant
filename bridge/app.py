@@ -7,6 +7,7 @@ from urllib.error import URLError
 from urllib.parse import parse_qs, urlencode, urlparse
 from urllib.request import urlopen
 
+import gcal
 import spotify
 from tune_page import PAGE
 
@@ -118,6 +119,7 @@ def weather(lat, lon):
 
 
 spotify_client = spotify.Spotify()
+gcal_client = gcal.GoogleCalendar()
 MAX_BODY_BYTES = 1024
 
 
@@ -139,6 +141,17 @@ class Handler(BaseHTTPRequestHandler):
             self.reply(200, {"ok": False, "err": error.code})
         except Exception as error:
             print(f"spotify failed: {error}", flush=True)
+            self.reply(200, {"ok": False, "err": "upstream"})
+
+    def calendar_reply(self, args):
+        try:
+            self.reply(200, gcal_client.today(int(args["off"][0])))
+        except (KeyError, IndexError, ValueError):
+            self.reply(400, {"error": "off (UTC offset in minutes) required"})
+        except gcal.CalendarError as error:
+            self.reply(200, {"ok": False, "err": error.code})
+        except Exception as error:
+            print(f"calendar failed: {error}", flush=True)
             self.reply(200, {"ok": False, "err": "upstream"})
 
     def cover_reply(self, args):
@@ -206,6 +219,8 @@ class Handler(BaseHTTPRequestHandler):
             self.spotify_reply(lambda: self.lyrics(args))
         elif url.path == "/spotify/cover":
             self.cover_reply(args)
+        elif url.path == "/calendar/today":
+            self.calendar_reply(args)
         elif url.path == "/spotify/tune":
             self.page_reply(PAGE)
         elif url.path == "/spotify/tune/state":

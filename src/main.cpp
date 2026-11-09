@@ -21,6 +21,7 @@
 #include "StatusService.h"
 #include "SerialConsole.h"
 #include "Agenda.h"
+#include "CalendarService.h"
 #include "MainScreen.h"
 #include "TodayScreen.h"
 #include "FocusSession.h"
@@ -48,14 +49,6 @@
 #include "MusicLyricsScreen.h"
 #include "SettingsScreen.h"
 
-const AgendaEvent sampleEvents[] = {
-    {8 * 60 + 30, 9 * 60, "Standup"},
-    {10 * 60, 11 * 60, "Design review"},
-    {12 * 60 + 30, 13 * 60 + 30, "Lunch"},
-    {15 * 60, 16 * 60, "Deep work"},
-    {18 * 60, 19 * 60, "Gym"},
-};
-
 const uint16_t sampleWeekMinutes[FocusSession::weekDays] = {95, 140, 60, 110, 85, 30, 45};
 
 TFT_eSPI tft = TFT_eSPI();
@@ -68,7 +61,8 @@ DHTManager dhtSensor(4);
 StatusService statusService(rtc, dhtSensor);
 SerialConsole console(rtc, wifi);
 TimeSync timeSync(rtc, configService, wifi);
-Agenda agenda(sampleEvents, sizeof(sampleEvents) / sizeof(sampleEvents[0]));
+Agenda agenda;
+CalendarService calendarService(configService, wifi);
 TapButton leftButton(21, true);
 TapButton rightButton(22, true);
 InputRouter input(encoder, leftButton, rightButton);
@@ -133,6 +127,10 @@ void refreshSpotify() {
     spotifyService.refreshNow();
 }
 
+void refreshCalendar() {
+    calendarService.refreshNow();
+}
+
 void reconnectWifi() {
     wifi.reconnect();
 }
@@ -141,8 +139,8 @@ void reinitSensor() {
     statusService.reinitSensor();
 }
 
-SettingsContext settingsContext = {configService, statusService.status(), statusService, wifi, timeSync, sdManager, weatherService, spotifyService};
-SettingsActions settingsActions = {refreshWeather, refreshSpotify, rebootDevice, reconnectWifi, reinitSensor};
+SettingsContext settingsContext = {configService, statusService.status(), statusService, wifi, timeSync, sdManager, weatherService, spotifyService, calendarService};
+SettingsActions settingsActions = {refreshWeather, refreshSpotify, refreshCalendar, rebootDevice, reconnectWifi, reinitSensor};
 SettingsScreen settingsScreen(settingsContext, settingsActions);
 
 Screen* const mainSubPages[] = {&mainScreen, &todayScreen, &focusScreen, &quickMenuScreen};
@@ -288,6 +286,7 @@ void setup() {
     wifi.begin(configService.config());
     weatherService.begin();
     spotifyService.begin();
+    calendarService.begin();
 }
 
 void loop() {
@@ -298,6 +297,7 @@ void loop() {
     timeSync.update();
     weatherService.update(weather);
     statusService.update();
+    calendarService.update(agenda, statusService.status());
     updateDaylight();
     focusSession.update();
     timerService.update();
