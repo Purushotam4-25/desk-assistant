@@ -26,5 +26,5 @@ private:
     void drawDots();
     void drawHeader();
     void drawBlocks();
-    void drawBlock(int slot, int lyric, bool noLyrics);
+    void drawBlock(int slot, int lyric, const char* message);
 };

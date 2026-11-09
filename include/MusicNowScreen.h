@@ -24,11 +24,12 @@ private:
     bool _openLyrics = false;
     bool _returning = false;
 
-    int32_t _dotsKey, _infoKey, _barKey, _controlsKey, _timesKey, _pillKey;
+    int32_t _dotsKey, _infoKey, _barKey, _controlsKey, _timesKey, _pillKey, _coverKey;
 
     void resetKeys();
     void activate();
     void drawDots();
+    void drawCover();
     void drawInfo();
     void drawProgress();
     void drawControls();

@@ -11,6 +11,7 @@ public:
     void begin();
     void update();
     void draw();
+    uint8_t page() const { return _page; }
 
 private:
     InputRouter& _input;

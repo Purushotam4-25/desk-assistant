@@ -53,39 +53,49 @@ void MusicLyricsScreen::drawDots() {
 }
 
 void MusicLyricsScreen::drawHeader() {
-    int32_t key = _player.current();
+    int32_t key = _player.trackRevision() & 0xFFFFF;
     if (key == _headerKey) return;
     _headerKey = key;
 
     tft.fillRect(0, 2, 146, 20, Theme::background);
     tft.fillRect(174, 2, 146, 20, Theme::background);
-    if (_player.trackCount() == 0) return;
+    if (!_player.ready()) return;
 
     int y = MusicUi::bodyY(MusicUi::dotsY);
     char text[40];
-    MusicUi::fit(_player.currentTrack().title, headerMaxInk, text, sizeof(text));
+    MusicUi::fit(_player.title(), headerMaxInk, text, sizeof(text));
     Widgets::inkText(text, edge, y, Fonts::body, 1, Theme::text);
-    MusicUi::fit(_player.album().artist, headerMaxInk, text, sizeof(text));
+    MusicUi::fit(_player.artist(), headerMaxInk, text, sizeof(text));
     Widgets::inkText(text, rightEdge - Widgets::inkWidth(text, Fonts::body, 1), y, Fonts::body, 1, Theme::textMuted);
 }
 
 void MusicLyricsScreen::drawBlocks() {
-    bool noLyrics = _player.trackCount() == 0 || _player.currentTrack().lyricCount == 0;
-    int now = noLyrics ? -1 : _player.lyricIndex();
-    int count = noLyrics ? 0 : _player.currentTrack().lyricCount;
+    const char* message = nullptr;
+    if (!_player.ready()) {
+        message = _player.stateText();
+    } else if (_player.lyricsState() == MusicPlayer::LyricsState::Failed) {
+        message = "Can't load lyrics";
+    } else if (_player.lyricsState() == MusicPlayer::LyricsState::Pending || !_player.lyricsLoaded()) {
+        message = "...";
+    } else if (_player.lyricCount() == 0) {
+        message = "No lyrics";
+    }
+    int count = message ? 0 : _player.lyricCount();
+    int now = message ? -1 : _player.lyricIndex();
+    int32_t base = (int32_t)(_player.lyricsRevision() & 0xFFFF) * 256;
 
     for (int slot = 0; slot < blockCount; slot++) {
         int lyric = now - 1 + slot;
         bool exists = lyric >= 0 && lyric < count;
-        int32_t key = (_player.current() * 100 + (noLyrics ? 99 : lyric + 2)) * 4 + slot;
+        int32_t key = (base + (message ? 255 : lyric + 2)) * 4 + slot;
         if (!exists && slot != 1) key = -2 - slot;
         if (key == _blockKeys[slot]) continue;
         _blockKeys[slot] = key;
-        drawBlock(slot, exists ? lyric : -1, noLyrics);
+        drawBlock(slot, exists ? lyric : -1, message);
     }
 }
 
-void MusicLyricsScreen::drawBlock(int slot, int lyric, bool noLyrics) {
+void MusicLyricsScreen::drawBlock(int slot, int lyric, const char* message) {
     int y = blockTop + slot * blockPitch;
     tft.fillRect(blockX, y, blockW, blockH, Theme::background);
 
@@ -93,11 +103,12 @@ void MusicLyricsScreen::drawBlock(int slot, int lyric, bool noLyrics) {
     const char* line2 = "";
     uint16_t color = slot == 0 ? Theme::textDim : Theme::textMuted;
     if (lyric >= 0) {
-        const MusicLyric& block = _player.currentTrack().lyrics[lyric];
+        const MusicLyric& block = _player.lyric(lyric);
         line1 = block.line1;
         line2 = block.line2;
     } else if (slot == 1) {
-        line1 = noLyrics ? "No lyrics" : "...";
+        line1 = message ? message : "...";
+        color = Theme::textDim;
     } else {
         return;
     }

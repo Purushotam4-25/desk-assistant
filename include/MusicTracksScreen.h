@@ -21,12 +21,15 @@ private:
     ListFocus _focus;
     bool _full = true;
 
-    int32_t _dotsKey, _barKey;
+    int32_t _dotsKey, _barKey, _albumKey, _coverKey;
     int32_t _rowKeys[visibleRows];
 
     void resetKeys();
     void drawDots();
+    void drawCover();
+    void drawAlbum();
     void drawAlbumInfo();
+    void drawEmpty();
     void drawRows();
     void drawRow(int slot, int track, bool selected, bool playing);
     void drawScrollBar();

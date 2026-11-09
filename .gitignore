@@ -22,3 +22,5 @@ config.tmp
 config.bak
 bridge/.env
 sd-card/
+bridge/data/
+bridge/__pycache__/

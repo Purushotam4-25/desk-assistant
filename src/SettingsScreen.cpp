@@ -151,7 +151,11 @@ void SettingsScreen::activate(const MenuItem& selected, int index) {
                     if (_actions.weatherRefresh) _actions.weatherRefresh();
                     showFeedback("Fetching");
                     break;
-                case ActionId::Relink: showFeedback("Not available"); break;
+                case ActionId::SpotifyTest:
+                    if (_actions.spotifyRefresh) _actions.spotifyRefresh();
+                    showFeedback("Fetching");
+                    break;
+                case ActionId::Relink: showFeedback("Run PC helper"); break;
                 case ActionId::RunChecks: showFeedback("Coming soon"); break;
             }
             break;

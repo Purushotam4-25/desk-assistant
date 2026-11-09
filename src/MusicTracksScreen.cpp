@@ -22,14 +22,12 @@ MusicTracksScreen::MusicTracksScreen(MusicPlayer& player, const NavState& nav) :
 }
 
 void MusicTracksScreen::resetKeys() {
-    _dotsKey = _barKey = -1;
+    _dotsKey = _barKey = _albumKey = _coverKey = -1;
     for (int i = 0; i < visibleRows; i++) _rowKeys[i] = -1;
 }
 
 void MusicTracksScreen::init() {
     _full = true;
-    _focus.count = _player.trackCount();
-    _focus.set(_player.current());
 }
 
 void MusicTracksScreen::update() {}
@@ -37,18 +35,18 @@ void MusicTracksScreen::update() {}
 void MusicTracksScreen::handleInput(Input input) {
     if (input == Input::FocusNext) _focus.move(1);
     if (input == Input::FocusPrev) _focus.move(-1);
-    if (input == Input::Select && _focus.count > 0) _player.select(_focus.index);
+    if (input == Input::Select && _focus.count > 0) _player.playTrack(_focus.index);
 }
 
 void MusicTracksScreen::draw() {
     if (_full) {
         tft.fillScreen(Theme::background);
         resetKeys();
-        MusicUi::cover(coverX, coverY);
-        drawAlbumInfo();
         _full = false;
     }
     drawDots();
+    drawCover();
+    drawAlbum();
     drawRows();
     drawScrollBar();
 }
@@ -60,9 +58,44 @@ void MusicTracksScreen::drawDots() {
     MusicUi::dots(_nav);
 }
 
+void MusicTracksScreen::drawCover() {
+    bool visible = _player.coverVisible();
+    int32_t key = (int32_t)(_player.coverRevision() & 0xFFFFF) * 2 + visible;
+    if (key == _coverKey) return;
+    _coverKey = key;
+    MusicUi::cover(coverX, coverY, visible ? _player.coverPixels() : nullptr);
+}
+
+void MusicTracksScreen::drawAlbum() {
+    int32_t key = _player.albumRevision() & 0xFFFFF;
+    if (key == _albumKey) return;
+    _albumKey = key;
+
+    _focus.count = _player.ready() ? _player.trackCount() : 0;
+    _focus.first = 0;
+    _focus.set(_player.current() >= 0 ? _player.current() : 0);
+    for (int i = 0; i < visibleRows; i++) _rowKeys[i] = -1;
+    _barKey = -1;
+
+    tft.fillRect(0, 118, 104, 122, Theme::background);
+    tft.fillRect(rowX, rowTop, 320 - rowX, 7 * rowPitch, Theme::background);
+    if (_focus.count == 0) {
+        drawEmpty();
+        return;
+    }
+    drawAlbumInfo();
+}
+
+void MusicTracksScreen::drawEmpty() {
+    const char* text = _player.stateText();
+    if (_player.ready()) text = _player.albumFailed() ? "Can't load album" : "Loading...";
+    char line[40];
+    MusicUi::fit(text, rowW - 20, line, sizeof(line));
+    Widgets::inkText(line, numX, MusicUi::bodyY(rowTop + 13), Fonts::body, 1, Theme::textDim);
+}
+
 void MusicTracksScreen::drawAlbumInfo() {
-    const MusicAlbum& album = _player.album();
-    if (!album.title) return;
+    const MusicAlbumInfo& album = _player.album();
 
     char length[12];
     formatMinutes(length, sizeof(length), _player.albumSeconds() / 60);
@@ -77,6 +110,7 @@ void MusicTracksScreen::drawAlbumInfo() {
 }
 
 void MusicTracksScreen::drawRows() {
+    if (_focus.count == 0) return;
     for (int slot = 0; slot < visibleRows; slot++) {
         int track = _focus.first + slot;
         bool exists = track < _focus.count;

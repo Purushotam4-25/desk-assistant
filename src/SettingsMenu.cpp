@@ -220,6 +220,47 @@ Health weatherSource(const SettingsContext&, char* out, size_t size) {
     return Health::None;
 }
 
+Health spotifyStatus(const SettingsContext& ctx, char* out, size_t size) {
+    switch (ctx.spotify.link()) {
+        case SpotifyService::Link::NoBridge:
+            snprintf(out, size, "No bridge");
+            return Health::Off;
+        case SpotifyService::Link::WaitingForWifi:
+            snprintf(out, size, "No Wi-Fi");
+            return Health::Warn;
+        case SpotifyService::Link::Connecting:
+            snprintf(out, size, "Not polled");
+            return Health::Off;
+        case SpotifyService::Link::Ok:
+            snprintf(out, size, "Live");
+            return Health::Ok;
+        case SpotifyService::Link::NotLinked:
+            snprintf(out, size, "Not linked");
+            return Health::Warn;
+        case SpotifyService::Link::PremiumRequired:
+            snprintf(out, size, "Premium");
+            return Health::Error;
+        case SpotifyService::Link::Error:
+            snprintf(out, size, ctx.spotify.everOk() ? "Stale" : "Error");
+            return ctx.spotify.everOk() ? Health::Warn : Health::Error;
+    }
+    return Health::None;
+}
+
+Health spotifyLastOk(const SettingsContext& ctx, char* out, size_t size) {
+    if (ctx.spotify.everOk()) {
+        formatAgo(ctx.spotify.lastOkMs(), out, size);
+    } else {
+        snprintf(out, size, "never");
+    }
+    return Health::None;
+}
+
+Health spotifyError(const SettingsContext& ctx, char* out, size_t size) {
+    snprintf(out, size, "%s", ctx.spotify.lastError()[0] ? ctx.spotify.lastError() : "none");
+    return Health::None;
+}
+
 Health notBuilt(const SettingsContext&, char* out, size_t size) {
     snprintf(out, size, "Not built");
     return Health::Off;
@@ -530,10 +571,10 @@ constexpr MenuItem bluetoothItems[] = {
 constexpr Menu bluetoothMenu = menu("Bluetooth", bluetoothItems);
 
 constexpr MenuItem spotifyItems[] = {
-    info("Status", notSetUp),
-    info("Last OK", never),
-    info("Error", noneYet),
-    action("Test now", ActionId::TestService),
+    info("Status", spotifyStatus),
+    info("Last OK", spotifyLastOk),
+    info("Error", spotifyError),
+    action("Test now", ActionId::SpotifyTest),
     setting("Poll every", SettingId::SpotifyPoll),
     action("Re-link", ActionId::Relink),
 };
@@ -579,7 +620,7 @@ constexpr Menu diagnosticsMenu = menu("Diagnostics", diagnosticsItems);
 constexpr MenuItem connectionItems[] = {
     submenu("Wi-Fi", wifiMenu, wifiHub),
     submenu("Bluetooth", bluetoothMenu, notBuilt),
-    submenu("Spotify", spotifyMenu, notSetUp),
+    submenu("Spotify", spotifyMenu, spotifyStatus),
     submenu("Weather", weatherMenu, weatherStatus),
     submenu("Calendar", calendarMenu, notSetUp),
     submenu("Time sync", syncMenu, syncStatus),

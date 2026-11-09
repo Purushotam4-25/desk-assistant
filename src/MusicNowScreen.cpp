@@ -29,7 +29,7 @@ MusicNowScreen::MusicNowScreen(MusicPlayer& player, const NavState& nav, Screen&
 }
 
 void MusicNowScreen::resetKeys() {
-    _dotsKey = _infoKey = _barKey = _controlsKey = _timesKey = _pillKey = -1;
+    _dotsKey = _infoKey = _barKey = _controlsKey = _timesKey = _pillKey = _coverKey = -1;
 }
 
 void MusicNowScreen::init() {
@@ -68,10 +68,10 @@ void MusicNowScreen::draw() {
         tft.fillScreen(Theme::background);
         resetKeys();
         tft.drawFastHLine(60, ruleY, 200, Theme::outline);
-        MusicUi::cover(coverX, coverY);
         _full = false;
     }
     drawDots();
+    drawCover();
     drawInfo();
     drawProgress();
     drawControls();
@@ -86,48 +86,65 @@ void MusicNowScreen::drawDots() {
     MusicUi::dots(_nav);
 }
 
+void MusicNowScreen::drawCover() {
+    bool visible = _player.coverVisible();
+    int32_t key = (int32_t)(_player.coverRevision() & 0xFFFFF) * 2 + visible;
+    if (key == _coverKey) return;
+    _coverKey = key;
+    MusicUi::cover(coverX, coverY, visible ? _player.coverPixels() : nullptr);
+}
+
 void MusicNowScreen::drawInfo() {
-    int32_t key = _player.current();
+    int32_t key = _player.trackRevision() & 0xFFFFF;
     if (key == _infoKey) return;
     _infoKey = key;
 
     tft.fillRect(0, 117, 320, 44, Theme::background);
-    if (_player.trackCount() == 0) return;
-
     char line[40];
-    MusicUi::fit(_player.currentTrack().title, textMaxInk, line, sizeof(line));
+    if (!_player.ready()) {
+        MusicUi::fit(_player.stateText(), textMaxInk, line, sizeof(line));
+        Widgets::inkTextCentered(line, 160, MusicUi::bodyY(titleCentre), Fonts::body, 1, Theme::textDim);
+        MusicUi::fit(_player.stateHint(), textMaxInk, line, sizeof(line));
+        Widgets::inkTextCentered(line, 160, MusicUi::bodyY(artistCentre), Fonts::body, 1, Theme::textDim);
+        return;
+    }
+
+    MusicUi::fit(_player.title(), textMaxInk, line, sizeof(line));
     Widgets::inkTextCentered(line, 160, MusicUi::bodyY(titleCentre), Fonts::body, 1, Theme::text);
-    MusicUi::fit(_player.album().artist, textMaxInk, line, sizeof(line));
+    MusicUi::fit(_player.artist(), textMaxInk, line, sizeof(line));
     Widgets::inkTextCentered(line, 160, MusicUi::bodyY(artistCentre), Fonts::body, 1, Theme::textMuted);
 }
 
 void MusicNowScreen::drawProgress() {
-    uint32_t length = _player.trackCount() ? _player.currentTrack().seconds : 0;
+    uint32_t length = _player.ready() ? _player.durationSeconds() : 0;
     int position = length ? _player.elapsedSeconds() * scrubTravel / length : 0;
-    int32_t key = _player.current() * 1000 + position;
+    int32_t key = (int32_t)(_player.trackRevision() & 0xFFFFF) * 512 + position + (length ? 0 : 1000000000);
     if (key == _barKey) return;
     _barKey = key;
 
     tft.fillRect(barX, barTop, barW + 1, barBlockH, Theme::background);
     tft.fillRect(barX, barTrackY, barW, 4, Theme::outline);
+    if (!length) return;
     tft.fillRect(barX, barTrackY, 5 + position, 4, Theme::accent);
     tft.fillCircle(barX + 5 + position, barTop + 5, 5, Theme::text);
 }
 
 void MusicNowScreen::drawControls() {
-    int32_t key = (int32_t)(_player.revision() & 0xFFFFF) * 8 + _focused;
+    bool live = _player.ready();
+    int32_t key = (int32_t)(_player.revision() & 0xFFFFF) * 16 + _focused * 2 + live;
     if (key == _controlsKey) return;
     _controlsKey = key;
+    uint16_t idle = live ? Theme::textMuted : Theme::textDim;
 
     int cx = controlsX, cy = controlsY;
     tft.fillRect(cx - 52, cy - 11, 104, 23, Theme::background);
 
-    uint16_t prevColor = _focused == Prev ? Theme::accent : Theme::textMuted;
+    uint16_t prevColor = _focused == Prev ? Theme::accent : idle;
     int px = cx - 48;
     tft.fillRect(px, cy - 7, 2, 15, prevColor);
     tft.fillTriangle(px + 14, cy - 7, px + 14, cy + 7, px + 3, cy, prevColor);
 
-    uint16_t playColor = _focused == Play ? Theme::accent : Theme::text;
+    uint16_t playColor = _focused == Play ? Theme::accent : (live ? Theme::text : Theme::textDim);
     if (_player.playing()) {
         tft.fillRect(cx - 8, cy - 9, 6, 19, playColor);
         tft.fillRect(cx + 3, cy - 9, 6, 19, playColor);
@@ -135,28 +152,38 @@ void MusicNowScreen::drawControls() {
         tft.fillTriangle(cx - 7, cy - 9, cx - 7, cy + 9, cx + 9, cy, playColor);
     }
 
-    uint16_t nextColor = _focused == Next ? Theme::accent : Theme::textMuted;
+    uint16_t nextColor = _focused == Next ? Theme::accent : idle;
     int nx = cx + 34;
     tft.fillTriangle(nx, cy - 7, nx, cy + 7, nx + 11, cy, nextColor);
     tft.fillRect(nx + 13, cy - 7, 2, 15, nextColor);
 }
 
 void MusicNowScreen::drawTimes() {
+    bool live = _player.ready();
     uint32_t elapsed = _player.elapsedSeconds();
-    int32_t key = (_player.current() << 16) | (int32_t)elapsed;
+    int32_t key = ((int32_t)(_player.trackRevision() & 0x3FFF) << 16) | (int32_t)(live ? elapsed : 0xFFFF);
     if (key == _timesKey) return;
     _timesKey = key;
 
     int y = MusicUi::bodyY(timesY);
     char text[12];
+    uint16_t color = live ? Theme::textMuted : Theme::textDim;
 
     tft.fillRect(edge - 2, timesY - 11, 66, 23, Theme::background);
-    formatTime(text, sizeof(text), elapsed);
-    Widgets::inkText(text, edge, y, Fonts::body, 1, Theme::textMuted);
+    if (live) {
+        formatTime(text, sizeof(text), elapsed);
+    } else {
+        snprintf(text, sizeof(text), "--");
+    }
+    Widgets::inkText(text, edge, y, Fonts::body, 1, color);
 
     tft.fillRect(rightEdge - 64, timesY - 11, 66, 23, Theme::background);
-    formatTime(text, sizeof(text), _player.trackCount() ? _player.currentTrack().seconds : 0);
-    Widgets::inkText(text, rightEdge - Widgets::inkWidth(text, Fonts::body, 1), y, Fonts::body, 1, Theme::textMuted);
+    if (live) {
+        formatTime(text, sizeof(text), _player.durationSeconds());
+    } else {
+        snprintf(text, sizeof(text), "--");
+    }
+    Widgets::inkText(text, rightEdge - Widgets::inkWidth(text, Fonts::body, 1), y, Fonts::body, 1, color);
 }
 
 void MusicNowScreen::drawPill() {

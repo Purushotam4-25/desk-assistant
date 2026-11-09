@@ -35,10 +35,10 @@ void range(char* out, size_t size, uint16_t start, uint16_t end, bool use24Hour)
     if (use24Hour) {
         snprintf(out, size, "%02d:%02d - %02d:%02d", start / 60, start % 60, end / 60, end % 60);
     } else if (isMorning(start) == isMorning(end)) {
-        snprintf(out, size, "%d:%02d - %d:%02d %s", twelveHour(start), start % 60, twelveHour(end), end % 60,
+        snprintf(out, size, "%d:%02d-%d:%02d %s", twelveHour(start), start % 60, twelveHour(end), end % 60,
                  meridiem(end));
     } else {
-        snprintf(out, size, "%d:%02d%c - %d:%02d%c", twelveHour(start), start % 60, meridiemLetter(start),
+        snprintf(out, size, "%d:%02d%c-%d:%02d%c", twelveHour(start), start % 60, meridiemLetter(start),
                  twelveHour(end), end % 60, meridiemLetter(end));
     }
 }

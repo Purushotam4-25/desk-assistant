@@ -5,6 +5,7 @@
 #include "SDManager.h"
 #include "Settings.h"
 #include "SettingsWidgets.h"
+#include "SpotifyService.h"
 #include "StatusService.h"
 #include "TimeSync.h"
 #include "WeatherService.h"
@@ -18,10 +19,12 @@ struct SettingsContext {
     const TimeSync& timeSync;
     SDManager& sd;
     const WeatherService& weather;
+    const SpotifyService& spotify;
 };
 
 struct SettingsActions {
     void (*weatherRefresh)();
+    void (*spotifyRefresh)();
     void (*reboot)();
     void (*wifiReconnect)();
     void (*sensorReinit)();
@@ -29,7 +32,7 @@ struct SettingsActions {
 
 enum class ItemKind : uint8_t { Setting, Submenu, Info, Action };
 enum class ActionId : uint8_t {
-    Reboot, ResetSettings, FactoryReset, WifiReconnect, SensorReinit, PhoneSetup, BuzzerTest, TestService, WeatherTest, Relink, RunChecks
+    Reboot, ResetSettings, FactoryReset, WifiReconnect, SensorReinit, PhoneSetup, BuzzerTest, TestService, WeatherTest, SpotifyTest, Relink, RunChecks
 };
 
 using InfoFn = Health (*)(const SettingsContext& ctx, char* out, size_t size);

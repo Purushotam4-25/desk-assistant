@@ -42,51 +42,11 @@
 #include "WorldClockScreen.h"
 #include "CalendarDayScreen.h"
 #include "MusicPlayer.h"
+#include "SpotifyService.h"
 #include "MusicNowScreen.h"
 #include "MusicTracksScreen.h"
 #include "MusicLyricsScreen.h"
 #include "SettingsScreen.h"
-
-const MusicLyric lowTideLyrics[] = {
-    {8, "Footprints fade slowly", "along the water line"},
-    {20, "The lamps come on one", "by one across the bay"},
-    {32, "I count the quiet hours", "till the morning sings"},
-    {44, "Salt wind in my coat", "and nowhere left to be"},
-    {56, "Let the tide decide", "which way we drift"},
-    {68, "Low tide, low tide", "carry me home"},
-};
-
-const MusicLyric paperSkyLyrics[] = {
-    {6, "Folded maps and paper", "wings above the street"},
-    {18, "Nobody looks up", "so I keep it to myself"},
-    {30, "Kite string in my hand", "pulling at the grey"},
-    {42, "Come down slow", "come down kind"},
-    {54, "Paper sky, paper sky", "hold the light a while"},
-};
-
-const MusicLyric northboundLyrics[] = {
-    {7, "Headlights on the ridge", "counting every mile"},
-    {19, "The radio hums low", "a song I almost know"},
-    {31, "Northbound, northbound", "never looking back"},
-    {43, "Dawn is just a rumour", "somewhere past the hill"},
-    {55, "We keep the engine warm", "and the window down"},
-};
-
-const MusicTrack sampleTracks[] = {
-    {"Low Tide", 187, lowTideLyrics, sizeof(lowTideLyrics) / sizeof(lowTideLyrics[0])},
-    {"Paper Sky", 203, paperSkyLyrics, sizeof(paperSkyLyrics) / sizeof(paperSkyLyrics[0])},
-    {"Northbound", 226, northboundLyrics, sizeof(northboundLyrics) / sizeof(northboundLyrics[0])},
-    {"Amber", 158, nullptr, 0},
-    {"Static", 241, nullptr, 0},
-    {"Hush", 132, nullptr, 0},
-    {"Slow Burn", 214, nullptr, 0},
-    {"Lantern", 195, nullptr, 0},
-    {"Drift", 176, nullptr, 0},
-    {"Afterglow", 252, nullptr, 0},
-    {"Daybreak", 168, nullptr, 0},
-};
-
-const MusicAlbum sampleAlbum = {"Tidal", "Kestrel", "2024"};
 
 const AgendaEvent sampleEvents[] = {
     {8 * 60 + 30, 9 * 60, "Standup"},
@@ -139,6 +99,7 @@ CalendarDayScreen calendarMorning(statusService.status(), agenda, CalendarDay::m
 CalendarDayScreen calendarAfternoon(statusService.status(), agenda, CalendarDay::afternoonStartHour);
 
 MusicPlayer musicPlayer;
+SpotifyService spotifyService(configService, wifi);
 MusicLyricsScreen musicLyricsScreen(musicPlayer, nav);
 MusicNowScreen musicNowScreen(musicPlayer, nav, musicLyricsScreen);
 MusicTracksScreen musicTracksScreen(musicPlayer, nav);
@@ -168,6 +129,10 @@ void refreshWeather() {
     weatherService.refreshNow();
 }
 
+void refreshSpotify() {
+    spotifyService.refreshNow();
+}
+
 void reconnectWifi() {
     wifi.reconnect();
 }
@@ -176,8 +141,8 @@ void reinitSensor() {
     statusService.reinitSensor();
 }
 
-SettingsContext settingsContext = {configService, statusService.status(), statusService, wifi, timeSync, sdManager, weatherService};
-SettingsActions settingsActions = {refreshWeather, rebootDevice, reconnectWifi, reinitSensor};
+SettingsContext settingsContext = {configService, statusService.status(), statusService, wifi, timeSync, sdManager, weatherService, spotifyService};
+SettingsActions settingsActions = {refreshWeather, refreshSpotify, rebootDevice, reconnectWifi, reinitSensor};
 SettingsScreen settingsScreen(settingsContext, settingsActions);
 
 Screen* const mainSubPages[] = {&mainScreen, &todayScreen, &focusScreen, &quickMenuScreen};
@@ -208,6 +173,14 @@ const Page pages[] = {
     {"Settings", Icon::Settings, settingsSubPages, sizeof(settingsSubPages) / sizeof(settingsSubPages[0]), settingsEntry},
 };
 constexpr uint8_t pageCount = sizeof(pages) / sizeof(pages[0]);
+
+uint8_t pageIndexOf(const Screen* first) {
+    for (uint8_t i = 0; i < pageCount; i++) {
+        if (pages[i].subPages[0] == first) return i;
+    }
+    return pageCount;
+}
+const uint8_t musicPageIndex = pageIndexOf(&musicNowScreen);
 
 const uint16_t sensorIntervalSeconds[] = {10, 30, 60, 300};
 
@@ -307,7 +280,6 @@ void setup() {
     applySettings();
     statusService.update();
     focusSession.seedWeek(sampleWeekMinutes);
-    musicPlayer.setAlbum(sampleAlbum, sampleTracks, sizeof(sampleTracks) / sizeof(sampleTracks[0]));
 
     tft.init();
     tft.setRotation(2);
@@ -315,6 +287,7 @@ void setup() {
     screens.begin();
     wifi.begin(configService.config());
     weatherService.begin();
+    spotifyService.begin();
 }
 
 void loop() {
@@ -328,7 +301,8 @@ void loop() {
     updateDaylight();
     focusSession.update();
     timerService.update();
-    musicPlayer.update();
+    spotifyService.setActive(screens.page() == musicPageIndex);
+    spotifyService.update(musicPlayer);
     screens.update();
     screens.draw();
 }

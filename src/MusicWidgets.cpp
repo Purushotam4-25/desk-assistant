@@ -2,6 +2,9 @@
 #include "Theme.h"
 #include "Fonts.h"
 #include "Widgets.h"
+#include "MusicPlayer.h"
+
+static_assert(MusicUi::coverSize == musicCoverSide, "cover size must match the pixel buffer");
 
 extern TFT_eSPI tft;
 
@@ -16,7 +19,24 @@ void dots(const NavState& nav) {
     }
 }
 
-void cover(int x, int y) {
+void cover(int x, int y, const uint16_t* pixels) {
+    if (pixels) {
+        constexpr int radius = 6;
+        constexpr uint8_t cornerInset[radius] = {4, 2, 1, 1, 0, 0};
+        uint16_t* data = const_cast<uint16_t*>(pixels);
+        tft.fillRect(x, y, radius, radius, Theme::background);
+        tft.fillRect(x + coverSize - radius, y, radius, radius, Theme::background);
+        tft.fillRect(x, y + coverSize - radius, radius, radius, Theme::background);
+        tft.fillRect(x + coverSize - radius, y + coverSize - radius, radius, radius, Theme::background);
+        for (int row = 0; row < radius; row++) {
+            int inset = cornerInset[row];
+            int bottom = coverSize - 1 - row;
+            tft.pushImage(x + inset, y + row, coverSize - 2 * inset, 1, data + row * coverSize + inset);
+            tft.pushImage(x + inset, y + bottom, coverSize - 2 * inset, 1, data + bottom * coverSize + inset);
+        }
+        tft.pushImage(x, y + radius, coverSize, coverSize - 2 * radius, data + radius * coverSize);
+        return;
+    }
     tft.fillRoundRect(x, y, coverSize, coverSize, 6, Theme::surface);
     int nx = x + 24, ny = y + 20;
     uint16_t color = Theme::textDim;

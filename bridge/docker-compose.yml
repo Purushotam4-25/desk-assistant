@@ -7,3 +7,14 @@ services:
       - "8765:8765"
     environment:
       CACHE_MINUTES: "15"
+      SPOTIFY_CLIENT_ID: "${SPOTIFY_CLIENT_ID:-}"
+      SPOTIFY_DATA: /app/data/spotify.json
+      COVER_SATURATION: "${COVER_SATURATION:-}"
+      COVER_CONTRAST: "${COVER_CONTRAST:-}"
+      COVER_GAMMA: "${COVER_GAMMA:-}"
+      COVER_GAMMA_G: "${COVER_GAMMA_G:-}"
+      COVER_GAIN_R: "${COVER_GAIN_R:-}"
+      COVER_GAIN_G: "${COVER_GAIN_G:-}"
+      COVER_GAIN_B: "${COVER_GAIN_B:-}"
+    volumes:
+      - ./data:/app/data
